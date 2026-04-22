@@ -126,12 +126,10 @@ body::before{
 .nav-badge{margin-left:auto;font-size:10px;font-family:var(--mono);
   background:var(--red2);color:var(--red);padding:1px 6px;border-radius:20px;}
 .sidebar-footer{margin-top:auto;padding:14px 18px;border-top:0.5px solid var(--border);}
-.mode-toggle{background:var(--bg2);border-radius:var(--radius);padding:4px;display:flex;gap:2px;}
-.mode-btn{flex:1;text-align:center;padding:6px 4px;border-radius:7px;font-size:11px;
-  cursor:pointer;color:var(--text2);transition:all 0.2s;font-family:var(--mono);font-weight:500;}
-.mode-btn.active{background:var(--green);color:#000;font-weight:600;}
-.mode-label{font-size:10px;color:var(--text3);text-align:center;margin-bottom:6px;
-  font-family:var(--mono);text-transform:uppercase;letter-spacing:0.8px;}
+
+
+
+
 
 /* ═══════ MAIN ═══════ */
 .main{margin-left:220px;flex:1;padding:24px;position:relative;z-index:1;min-height:100vh;}
@@ -369,6 +367,34 @@ table.dre td.col-total{
 .yr-hint{font-size:10px;color:var(--text3);font-family:var(--mono);align-self:center;}
 /* sidebar scrollable */
 .sidebar{overflow-y:auto;}
+
+.btn-sair{
+  display:flex;align-items:center;gap:8px;width:100%;
+  padding:9px 16px;border:none;background:transparent;
+  color:var(--red);font-size:12px;font-family:var(--mono);
+  cursor:pointer;border-radius:8px;transition:background .15s;text-align:left;
+  margin-top:auto;
+}
+.btn-sair:hover{background:var(--red2);}
+
+.info-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--bg3);border:0.5px solid var(--border2);
+  color:var(--text3);font-size:10px;cursor:pointer;
+  transition:all .18s;flex-shrink:0;user-select:none;
+  font-family:var(--mono);font-weight:700;margin-left:6px;
+  vertical-align:middle;
+}
+.info-btn:hover,.info-btn.open{border-color:var(--green);color:var(--green);background:var(--green2);}
+.info-box{
+  display:none;margin-top:8px;padding:9px 13px;
+  background:var(--bg3);border:0.5px solid var(--border2);
+  border-left:2px solid var(--green);border-radius:8px;
+  font-size:11px;color:var(--text2);line-height:1.6;
+  font-family:var(--sans);
+}
+.info-box.open{display:block;}
 </style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg%20viewBox%3D%220%200%2064%2064%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20role%3D%22img%22%20aria-label%3D%22DashLog%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3ClinearGradient%20id%3D%22dl-bg%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%221%22%20y2%3D%221%22%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23111b2a%22/%3E%0A%20%20%20%20%20%20%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23080d14%22/%3E%0A%20%20%20%20%3C/linearGradient%3E%0A%20%20%3C/defs%3E%0A%20%20%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22url%28%23dl-bg%29%22/%3E%0A%20%20%3Crect%20x%3D%220.5%22%20y%3D%220.5%22%20width%3D%2263%22%20height%3D%2263%22%20rx%3D%2213.5%22%20fill%3D%22none%22%20stroke%3D%22rgba%2816%2C217%2C160%2C0.28%29%22/%3E%0A%20%20%3Cpath%20d%3D%22M18%2014%20L18%2050%20L32%2050%20A18%2018%200%200%200%2032%2014%20Z%22%20fill%3D%22%2310d9a0%22/%3E%0A%20%20%3Cpath%20d%3D%22M25%2042%20L31%2036%20L37%2030%20L42%2024%22%20fill%3D%22none%22%20stroke%3D%22%230d1420%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22/%3E%0A%20%20%3Ccircle%20cx%3D%2225%22%20cy%3D%2242%22%20r%3D%222.2%22%20fill%3D%22%230d1420%22/%3E%0A%20%20%3Ccircle%20cx%3D%2231%22%20cy%3D%2236%22%20r%3D%222.2%22%20fill%3D%22%230d1420%22/%3E%0A%20%20%3Ccircle%20cx%3D%2237%22%20cy%3D%2230%22%20r%3D%222.2%22%20fill%3D%22%230d1420%22/%3E%0A%20%20%3Ccircle%20cx%3D%2242%22%20cy%3D%2224%22%20r%3D%222.2%22%20fill%3D%22%230d1420%22/%3E%0A%3C/svg%3E">
 <style>
@@ -500,11 +526,11 @@ table.dre td.col-total{
       </div>
     </div>
   </div>
-  <div class="sidebar-footer" style="display:none"></div>
-    <div class="mode-toggle">
-      <div class="mode-btn active" id="btn-comp" onclick="setMode('comp')">COMP</div>
-      <div class="mode-btn" id="btn-cx" onclick="setMode('cx')">CAIXA</div>
-    </div>
+  
+  </div>
+
+  <div style="padding:8px 14px 16px;border-top:0.5px solid var(--border);">
+    <button class="btn-sair" id="btn-sair">⏻ &nbsp;Sair</button>
   </div>
 </nav>
 
@@ -554,31 +580,31 @@ table.dre td.col-total{
   <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr));margin-bottom:20px;">
     <div class="kpi-card green">
       <div class="kpi-icon">↑</div>
-      <div class="kpi-label">Receita Total</div>
+      <div class="kpi-label" style="display:flex;align-items:center;">Receita Total<button class="info-btn" onclick="toggleInfo('ov-rec')" title="Saiba mais">i</button><div class="info-box" id="info-ov-rec">Soma de todas as receitas operacionais. Inclui fretes e demais entradas da operação.</div></div>
       <div class="kpi-value green" id="kpi-rec">—</div>
       <div class="kpi-delta">Categoria: Receita</div>
     </div>
     <div class="kpi-card red">
       <div class="kpi-icon">↓</div>
-      <div class="kpi-label">Despesa Total</div>
+      <div class="kpi-label" style="display:flex;align-items:center;">Despesa Total<button class="info-btn" onclick="toggleInfo('ov-dep')" title="Saiba mais">i</button><div class="info-box" id="info-ov-dep">Soma de todas as despesas operacionais. Inclui combustível, manutenção, salários e outros custos.</div></div>
       <div class="kpi-value red" id="kpi-cst">—</div>
       <div class="kpi-delta">Categoria: Despesa</div>
     </div>
     <div class="kpi-card blue">
       <div class="kpi-icon">◈</div>
-      <div class="kpi-label">Lucro Operacional</div>
+      <div class="kpi-label" style="display:flex;align-items:center;">Lucro Operacional<button class="info-btn" onclick="toggleInfo('ov-luc')" title="Saiba mais">i</button><div class="info-box" id="info-ov-luc">Receita Total menos Despesa Total. Positivo = lucro, negativo = prejuízo operacional.</div></div>
       <div class="kpi-value" id="kpi-luc">—</div>
       <div class="kpi-delta">Receita − Despesas</div>
     </div>
     <div class="kpi-card amber">
       <div class="kpi-icon">%</div>
-      <div class="kpi-label">Margem de Lucro</div>
+      <div class="kpi-label" style="display:flex;align-items:center;">Margem de Lucro<button class="info-btn" onclick="toggleInfo('ov-mar')" title="Saiba mais">i</button><div class="info-box" id="info-ov-mar">Percentual do lucro sobre a receita. Indica quanto de cada R$ faturado vira resultado.</div></div>
       <div class="kpi-value amber" id="kpi-mar">—</div>
       <div class="kpi-delta">Lucro Operacional / Receita</div>
     </div>
     <div class="kpi-card purple">
       <div class="kpi-icon">◆</div>
-      <div class="kpi-label">Distribuição de Lucro</div>
+      <div class="kpi-label" style="display:flex;align-items:center;">Distribuição de Lucro<button class="info-btn" onclick="toggleInfo('ov-dist')" title="Saiba mais">i</button><div class="info-box" id="info-ov-dist">Total retirado como distribuição de lucros aos sócios da empresa.</div></div>
       <div class="kpi-value purple" id="kpi-distluc">—</div>
       <div class="kpi-delta">Total distribuído</div>
     </div>
@@ -701,14 +727,11 @@ table.dre td.col-total{
     <div><div class="page-title">Score & Alertas</div><div class="page-sub">Avaliação automática por veículo</div></div>
   </div>
   <div class="alert-bar" id="sc-alerts"></div>
-  <div class="filter-bar" style="margin-bottom:16px;">
-    <div class="filter-group">
-      <span class="filter-label">Análise</span>
-      <select id="sc-yr" onchange="renderScore()">
-        <option value="">Total Acumulado</option>
-      </select>
-    </div>
+    <div style="margin-bottom:16px;">
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:var(--mono);margin-bottom:8px;">Período</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;" id="sc-yr-pills"></div>
   </div>
+  <input type="hidden" id="sc-yr" value="">
   <div class="score-grid" id="score-grid"></div>
   <div class="chart-card">
     <div class="chart-header"><div><div class="chart-title">Lucro por Placa</div><div class="chart-sub">Resultado acumulado total</div></div></div>
@@ -726,7 +749,14 @@ table.dre td.col-total{
     <div class="kpi-card green"><div class="kpi-label">Melhor ano</div><div class="kpi-value green" id="a1-best">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026 (parcial)</div><div class="kpi-value amber" id="a1-2026">—</div><div class="kpi-delta">Ano em andamento</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Receita por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a1" role="img" aria-label="Receita anual"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Receita por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div><button class="info-btn" onclick="toggleInfo('ch-a1')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a1">Receita total por ano. Permite comparar o crescimento ou queda do faturamento ao longo dos anos.</div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a1"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Receita mensal — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div><button class="info-btn" onclick="toggleInfo('ch-a1-mo')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a1-mo">Distribuição mensal da receita no ano atual. Identifica sazonalidade e meses de melhor desempenho.</div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a1-mo"></canvas></div>
+  </div>
 </div>
 
 <div id="p-despesa" class="page">
@@ -736,7 +766,14 @@ table.dre td.col-total{
     <div class="kpi-card red"><div class="kpi-label">Maior despesa</div><div class="kpi-value red" id="a2-best">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026</div><div class="kpi-value amber" id="a2-2026">—</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Despesas por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a2" role="img" aria-label="Despesas anuais"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Despesas por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div><button class="info-btn" onclick="toggleInfo('ch-a2')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a2">Total de despesas por ano. Barras maiores indicam anos com maior custo operacional.</div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a2"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Despesas mensais — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div><button class="info-btn" onclick="toggleInfo('ch-a2-mo')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a2-mo">Distribuição mensal das despesas no ano atual. Identifica meses com maior pressão de custo.</div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a2-mo"></canvas></div>
+  </div>
 </div>
 
 <div id="p-compra" class="page">
@@ -766,7 +803,14 @@ table.dre td.col-total{
     <div class="kpi-card blue"><div class="kpi-label">Maior ano</div><div class="kpi-value blue" id="a5-best">—</div></div>
     <div class="kpi-card red"><div class="kpi-label">2021 (negativo)</div><div class="kpi-value red">-R$ 17.640,63</div><div class="kpi-delta">Verificar lançamentos</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Juros por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a5" role="img" aria-label="Juros"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Juros por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div><button class="info-btn" onclick="toggleInfo('ch-a5')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a5">Custo de juros por ano. Valores altos indicam maior uso de crédito ou endividamento.</div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a5"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Juros mensais — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div><button class="info-btn" onclick="toggleInfo('ch-a5-mo')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a5-mo">Distribuição mensal dos juros no ano atual. Identifica meses com maior custo financeiro.</div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a5-mo"></canvas></div>
+  </div>
 </div>
 
 <div id="p-lucro" class="page">
@@ -776,7 +820,14 @@ table.dre td.col-total{
     <div class="kpi-card purple"><div class="kpi-label">Maior distribuição</div><div class="kpi-value purple" id="a6-best">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026 (parcial)</div><div class="kpi-value amber" id="a6-2026">—</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Distribuição de lucros por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a6" role="img" aria-label="Distribuição lucros"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Distribuição por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div><button class="info-btn" onclick="toggleInfo('ch-a6')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a6">Distribuição de lucros por ano. Reflete o retorno financeiro entregue aos sócios.</div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a6"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Distribuição mensal — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div><button class="info-btn" onclick="toggleInfo('ch-a6-mo')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a6-mo">Distribuição mensal de lucros no ano atual. Acompanha o ritmo de distribuição mês a mês.</div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a6-mo"></canvas></div>
+  </div>
 </div>
 
 <!-- RENTABILIDADE -->
@@ -1258,18 +1309,6 @@ function renderPage(id){
 // ═══════════════════════════════════════════════════
 // MODE TOGGLE
 // ═══════════════════════════════════════════════════
-function setMode(m){
-  STATE.mode=m; _cache=null; _cacheKey='';
-  document.getElementById('btn-comp').classList.toggle('active',m==='comp');
-  document.getElementById('btn-cx').classList.toggle('active',m==='cx');
-  const label=m==='comp'?'Modo Competência':'Modo Caixa';
-  const el=document.getElementById('ov-mode-label');
-  if(el) el.textContent=label+' · Dados filtrados';
-  renderOverview();
-  renderCashflow();
-  renderRanking();
-}
-
 // ═══════════════════════════════════════════════════
 // FILTERS
 // ═══════════════════════════════════════════════════
@@ -1617,6 +1656,38 @@ function renderSimple(prefix, tipoName){
       plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}}},
       scales:{y:{grid:{color:gc},ticks:{callback:v=>fmtK(v),color:tc,font:{size:10}}},x:{grid:{display:false},ticks:{color:tc,font:{size:10},autoSkip:false}}}}
   });
+
+  // Gráfico mensal ano atual
+  const moCanvas=document.getElementById('ch-'+prefix+'-mo');
+  if(moCanvas){
+    const anoAtual=new Date().getFullYear().toString();
+    const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const moVals=Array(12).fill(0);
+    const tipoIdx=TIPO.indexOf(tipoName);
+    if(tipoIdx>=0){
+      for(let k=0;k<R.length;k++){
+        const row=R[k];
+        if(row[I_TIPO]!==tipoIdx) continue;
+        const mo=MO[row[I_DC]]||'';
+        if(!mo.startsWith(anoAtual)) continue;
+        const mes=parseInt(mo.slice(5,7),10)-1;
+        if(mes>=0&&mes<12) moVals[mes]+=row[I_VAL];
+      }
+    }
+    const isAbs=['Despesa','Compra de Veículo','Distribuição Lucro'].includes(tipoName);
+    const moDisplay=isAbs?moVals.map(v=>Math.abs(v)):moVals;
+    const baseColor=colors[0]||mkRGBA(GREEN,'0.75');
+    const moColors=moDisplay.map(v=>v>=0?baseColor:mkRGBA(RED,'0.75'));
+    mkChart('ch-'+prefix+'-mo',{type:'bar',
+      data:{labels:meses,datasets:[{label:'Valor',data:moDisplay,backgroundColor:moColors,borderWidth:0,borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}}},
+        scales:{y:{grid:{color:gc},ticks:{callback:v=>fmtK(v),color:tc,font:{size:10}}},
+          x:{grid:{display:false},ticks:{color:tc,font:{size:10},autoSkip:false}}}}
+    });
+    const tot=moVals.reduce((a,b)=>a+b,0);
+    setText(prefix+'-2026', fmtBR(isAbs?Math.abs(tot):tot));
+  }
 }
 
 // ═══════════════════════════════════════════════════
@@ -1682,8 +1753,9 @@ function renderRent09(){
 // DRE
 // ═══════════════════════════════════════════════════
 const CATS_DRE=(function(){
-  const all=[...new Set(CAT)];
-  return ['FRETE',...all.filter(c=>c!=='FRETE'&&c!=='JUROS').sort(),'JUROS'];
+  const all=[...new Set(CAT)].filter(c=>c&&c.trim()!=='');
+  const sem=['FRETE','JUROS'];
+  return ['FRETE',...all.filter(c=>!sem.includes(c)).sort(),'JUROS'];
 })();
 
 function initDRE(){
@@ -1901,6 +1973,45 @@ function renderCtrl(){
   }
 }
 
+
+// ═══════════════════════════════════════════════════
+// TOGGLE INFO BOXES
+// ═══════════════════════════════════════════════════
+function toggleInfo(uid){
+  var box=document.getElementById('info-'+uid);
+  var btn=box?box.previousElementSibling:null;
+  if(!box) return;
+  var isOpen=box.classList.contains('open');
+  box.classList.toggle('open',!isOpen);
+  if(btn) btn.classList.toggle('open',!isOpen);
+}
+
+// ═══════════════════════════════════════════════════
+// SCORE PILLS
+// ═══════════════════════════════════════════════════
+function initScorePills(){
+  var wrap=document.getElementById('sc-yr-pills');
+  if(!wrap) return;
+  wrap.innerHTML='';
+  var anos=[''].concat(ANOS12);
+  anos.forEach(function(yr){
+    var p=document.createElement('div');
+    p.className='yr-pill'+(yr===''?' yr-all':'');
+    p.textContent=yr===''?'Todos':yr;
+    p.dataset.val=yr;
+    p.onclick=function(){
+      document.querySelectorAll('#sc-yr-pills .yr-pill').forEach(function(x){
+        x.classList.remove('yr-sel','yr-all');
+      });
+      p.classList.add(yr===''?'yr-all':'yr-sel');
+      var h=document.getElementById('sc-yr');
+      if(h) h.value=yr;
+      renderScore();
+    };
+    wrap.appendChild(p);
+  });
+}
+
 // ═══════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════
@@ -1912,11 +2023,15 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     initFilters();
     initRankingFilter();
     initScoreFilter();
+    initScorePills();
     renderOverview();
     renderCashflow();
     renderRanking();
     renderScore();
     renderCtrl();
+    // Botão sair
+    var btnSair=document.getElementById('btn-sair');
+    if(btnSair) btnSair.addEventListener('click', function(){ sessionStorage.removeItem('dashlog_auth'); location.reload(); });
   }catch(err){
     console.error(err);
     const msg = document.getElementById('dl-msg');

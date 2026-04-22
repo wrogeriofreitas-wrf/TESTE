@@ -686,7 +686,6 @@ body.light .dashlog-brand{
       <button class="chart-info-toggle" id="cib-saldo" onclick="toggleChartInfo('saldo')">Como interpretar</button>
     </div>
     <div class="chart-info-panel" id="ci-saldo"><strong>O que este gráfico mostra:</strong> a evolução do saldo bancário acumulado, ano a ano, considerando todas as entradas e saídas <strong>efetivadas</strong> (data de pagamento). Mostra a trajetória do caixa da empresa.</div>
-    </div>
     <div class="chart-wrap" style="height:240px">
       <canvas id="ch-saldo-bancario" role="img" aria-label="Saldo bancário acumulado por ano"></canvas>
     </div>
@@ -794,6 +793,7 @@ body.light .dashlog-brand{
   <div class="kpi-grid">
     <div class="kpi-card green"><div class="kpi-label">Receita Total (2015–2026)</div><div class="kpi-value green" id="a1-tot">—</div></div>
     <div class="kpi-card green"><div class="kpi-label">Melhor ano</div><div class="kpi-value green" id="a1-best">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Pior ano</div><div class="kpi-value red" id="a1-worst">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026 (parcial)</div><div class="kpi-value amber" id="a1-2026">—</div><div class="kpi-delta">Ano em andamento</div></div>
   </div>
   <div class="chart-card">
@@ -811,6 +811,7 @@ body.light .dashlog-brand{
   <div class="kpi-grid">
     <div class="kpi-card red"><div class="kpi-label">Despesa Total (2015–2026)</div><div class="kpi-value red" id="a2-tot">—</div></div>
     <div class="kpi-card red"><div class="kpi-label">Maior despesa</div><div class="kpi-value red" id="a2-best">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Menor despesa</div><div class="kpi-value green" id="a2-worst">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026</div><div class="kpi-value amber" id="a2-2026">—</div></div>
   </div>
   <div class="chart-card">
@@ -827,20 +828,36 @@ body.light .dashlog-brand{
   <div class="page-header"><div><div class="page-title">Análise 03 — Compra de Veículos</div></div></div>
   <div class="kpi-grid">
     <div class="kpi-card red"><div class="kpi-label">Total Investido</div><div class="kpi-value red" id="a3-tot">—</div></div>
-    <div class="kpi-card red"><div class="kpi-label">Maior aquisição</div><div class="kpi-value red" id="a3-best">—</div></div>
-    <div class="kpi-card green"><div class="kpi-label">2026</div><div class="kpi-value green" id="a3-2026">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Maior aquisição (ano)</div><div class="kpi-value red" id="a3-best">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Menor aquisição (ano)</div><div class="kpi-value green" id="a3-worst">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">2026</div><div class="kpi-value amber" id="a3-2026">—</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Compra de veículos por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a3" role="img" aria-label="Compra veículos"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Compra de veículos por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a3" role="img" aria-label="Compra veículos"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Compra de veículos mensal — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a3-mo"></canvas></div>
+  </div>
 </div>
 
 <div id="p-venda" class="page">
   <div class="page-header"><div><div class="page-title">Análise 04 — Venda de Veículos</div></div></div>
   <div class="kpi-grid">
     <div class="kpi-card green"><div class="kpi-label">Total Recebido</div><div class="kpi-value green" id="a4-tot">—</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Melhor venda</div><div class="kpi-value green" id="a4-best">—</div></div>
-    <div class="kpi-card green"><div class="kpi-label">2026</div><div class="kpi-value green" id="a4-2026">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Melhor venda (ano)</div><div class="kpi-value green" id="a4-best">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Pior venda (ano)</div><div class="kpi-value red" id="a4-worst">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">2026</div><div class="kpi-value amber" id="a4-2026">—</div></div>
   </div>
-  <div class="chart-card"><div class="chart-title" style="margin-bottom:14px">Venda de veículos por ano (R$)</div><div class="chart-wrap" style="height:280px"><canvas id="ch-a4" role="img" aria-label="Venda veículos"></canvas></div></div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Venda de veículos por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-a4" role="img" aria-label="Venda veículos"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Venda de veículos mensal — 2026</div><div class="chart-sub">Mês a mês · ano em andamento</div></div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-a4-mo"></canvas></div>
+  </div>
 </div>
 
 <div id="p-juros" class="page">
@@ -848,7 +865,8 @@ body.light .dashlog-brand{
   <div class="kpi-grid">
     <div class="kpi-card blue"><div class="kpi-label">Total Juros</div><div class="kpi-value blue" id="a5-tot">—</div></div>
     <div class="kpi-card blue"><div class="kpi-label">Maior ano</div><div class="kpi-value blue" id="a5-best">—</div></div>
-    <div class="kpi-card red"><div class="kpi-label">2021 (negativo)</div><div class="kpi-value red">-R$ 17.640,63</div><div class="kpi-delta">Verificar lançamentos</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Menor ano</div><div class="kpi-value green" id="a5-worst">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">2026 (parcial)</div><div class="kpi-value amber" id="a5-2026">—</div></div>
   </div>
   <div class="chart-card">
     <div class="chart-header"><div><div class="chart-title">Juros por ano (R$)</div><div class="chart-sub">Evolução anual 2015–2026</div></div><button class="info-btn" onclick="toggleInfo('ch-a5')" title="Saiba mais">i</button><div class="info-box" id="info-ch-a5">Custo de juros por ano. Valores altos indicam maior uso de crédito ou endividamento.</div></div>
@@ -865,6 +883,7 @@ body.light .dashlog-brand{
   <div class="kpi-grid">
     <div class="kpi-card purple"><div class="kpi-label">Total Distribuído</div><div class="kpi-value purple" id="a6-tot">—</div></div>
     <div class="kpi-card purple"><div class="kpi-label">Maior distribuição</div><div class="kpi-value purple" id="a6-best">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Menor distribuição</div><div class="kpi-value red" id="a6-worst">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">2026 (parcial)</div><div class="kpi-value amber" id="a6-2026">—</div></div>
   </div>
   <div class="chart-card">
@@ -1682,12 +1701,22 @@ function renderSimple(prefix, tipoName){
   const isPos=total>=0;
   const absVals=vals.map(v=>Math.abs(v));
 
-  // Best year
-  let bestYr='—',bestVal=0;
-  ANOS12.forEach((y,i)=>{ if(Math.abs(vals[i])>Math.abs(bestVal)){bestVal=vals[i];bestYr=y;} });
+  // Best year and worst year
+  let bestYr='—',bestVal=0,worstYr='—',worstVal=0;
+  ANOS12.forEach((y,i)=>{
+    const v=vals[i];
+    if(Math.abs(v)>Math.abs(bestVal)){bestVal=v;bestYr=y;}
+  });
+  // Worst = year with smallest absolute value (but > 0)
+  const nonZero=ANOS12.filter((y,i)=>Math.abs(vals[i])>0.01);
+  if(nonZero.length>0){
+    worstYr=nonZero[0]; worstVal=vals[ANOS12.indexOf(nonZero[0])];
+    nonZero.forEach(y=>{const v=vals[ANOS12.indexOf(y)];if(Math.abs(v)<Math.abs(worstVal)){worstVal=v;worstYr=y;}});
+  }
 
   setText(prefix+'-tot', fmtBR(total));
   setText(prefix+'-best', bestYr+' — '+fmtBR(bestVal));
+  setText(prefix+'-worst', worstYr+' — '+fmtBR(worstVal));
   setText(prefix+'-2026', fmtBR(byYr['2026']));
 
   const posC=tipoName==='Receita'||tipoName==='Venda De Veículo'?mkRGBA(GREEN,'0.75'):tipoName==='Distribuição Lucro'?mkRGBA(AMBER,'0.75'):mkRGBA(RED,'0.75');
@@ -1901,7 +1930,7 @@ function exportDRE(){
   const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const ccData=(STATIC.dreData[STATE.dre_cc]||{})[STATE.dre_yr]||{};
   const rows=[['Categoria',...MESES,'Total']];
-  CATS_DRE.forEach(cat=>{
+  getCATS_DRE().forEach(cat=>{
     if(!ccData[cat]) return;
     const vals=ccData[cat];
     if(!vals.some(v=>Math.abs(v)>0)) return;
@@ -1974,10 +2003,11 @@ function renderCtrl(){
     const hasDiverg = Math.abs(total)>=0.01 || divergMes.length>0;
     totalDiverg += divergMes.length;
 
-    const borderColor = hasDiverg ? 'var(--red)' : 'var(--green)';
-    const iconBg      = hasDiverg ? 'var(--red2)' : 'var(--green2)';
-    const icon        = hasDiverg ? '⚠' : '✓';
-    const valColor    = hasDiverg ? 'var(--red)' : 'var(--green)';
+    const borderColor = hasDiverg ? 'var(--amber)' : 'var(--green)';
+    const iconBg      = hasDiverg ? 'var(--red2)'  : 'var(--green2)';
+    const icon        = hasDiverg ? '<span style="color:var(--red);font-weight:700;">✕</span>' : '✓';
+    const valColor    = hasDiverg ? 'var(--amber)' : 'var(--green)';
+    const titleStyle  = hasDiverg ? 'font-weight:700;color:var(--amber);' : '';
 
     let listHTML = '';
     if(divergMes.length > 0){
@@ -2005,7 +2035,7 @@ function renderCtrl(){
           <div style="width:36px;height:36px;border-radius:50%;background:${iconBg};
                       display:flex;align-items:center;justify-content:center;font-size:18px;">${icon}</div>
           <div>
-            <div style="font-size:13px;font-weight:500;">${label}</div>
+            <div style="font-size:13px;font-weight:500;${titleStyle}">${label}</div>
             <div style="font-size:11px;color:var(--text3);">Deve ser zero</div>
           </div>
         </div>

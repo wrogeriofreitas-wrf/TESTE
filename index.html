@@ -218,6 +218,10 @@ body::before{
 .chart-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
 .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .chart-title{font-size:13px;font-weight:500;color:var(--text);}
+.info-btn{font-size:10px;font-family:var(--mono);color:var(--blue);background:var(--blue2);border:1px solid var(--blue);border-radius:5px;padding:3px 9px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;line-height:1.6;}
+.info-btn:hover{background:rgba(59,158,255,0.25);}
+.info-panel{display:none;background:rgba(59,158,255,0.05);border:1px solid rgba(59,158,255,0.18);border-radius:7px;padding:10px 13px;margin-top:8px;font-size:11px;color:var(--text2);line-height:1.65;}
+.info-panel.open{display:block;}
 .chart-sub{font-size:11px;color:var(--text3);font-family:var(--mono);}
 .chart-wrap{position:relative;width:100%;}
 
@@ -1740,10 +1744,10 @@ function renderRent09(){
 // ═══════════════════════════════════════════════════
 // DRE
 // ═══════════════════════════════════════════════════
-const CATS_DRE=(function(){
+function getCATS_DRE(){
   const all=[...new Set(CAT)];
   return ['FRETE',...all.filter(c=>c!=='FRETE'&&c!=='JUROS').sort(),'JUROS'];
-})();
+}
 
 function initDRE(){
   // Year buttons
@@ -1773,7 +1777,7 @@ function renderDRE(){
   document.getElementById('dre-head').innerHTML='<tr><th>Categoria</th>'+MESES.map(m=>'<th>'+m+'</th>').join('')+'<th class="col-total">Total</th></tr>';
 
   const ccData=(STATIC.dreData[STATE.dre_cc]||{})[STATE.dre_yr]||{};
-  const catsOk=CATS_DRE.filter(cat=>ccData[cat]&&ccData[cat].some(v=>Math.abs(v)>0.005));
+  const catsOk=getCATS_DRE().filter(cat=>ccData[cat]&&ccData[cat].some(v=>Math.abs(v)>0.005));
   let totMes=Array(12).fill(0), totGeral=0;
 
   const rows=catsOk.map(cat=>{
@@ -1838,7 +1842,7 @@ function exportDRE(){
   const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const ccData=(STATIC.dreData[STATE.dre_cc]||{})[STATE.dre_yr]||{};
   const rows=[['Categoria',...MESES,'Total']];
-  CATS_DRE.forEach(cat=>{
+  getCATS_DRE().forEach(cat=>{
     if(!ccData[cat]) return;
     const vals=ccData[cat];
     if(!vals.some(v=>Math.abs(v)>0)) return;
@@ -1911,10 +1915,18 @@ function renderCtrl(){
     const hasDiverg = Math.abs(total)>=0.01 || divergMes.length>0;
     totalDiverg += divergMes.length;
 
-    const borderColor = hasDiverg ? 'var(--red)' : 'var(--green)';
-    const iconBg      = hasDiverg ? 'var(--red2)' : 'var(--green2)';
-    const icon        = hasDiverg ? '⚠' : '✓';
-    const valColor    = hasDiverg ? 'var(--red)' : 'var(--green)';
+    const borderColor = hasDiverg ? 'var(--amber)' : 'var(--green)';
+    const iconBg      = hasDiverg ? 'var(--amber2)' : 'var(--green2)';
+    const icon        = hasDiverg ? '<span style="color:var(--red);font-weight:700;">✕</span>' : '✓';
+    const valColor    = hasDiverg ? 'var(--amber)' : 'var(--green)';
+    const labelWeight = hasDiverg ? '700' : '500';
+    const labelColor  = hasDiverg ? 'var(--amber)' : 'var(--text)';
+    const infoTexto   = label==='Transferências'
+      ? 'Lançamentos de Transferência devem sempre somar zero: cada saída de uma placa deve ter uma entrada correspondente em outra. Qualquer saldo diferente de zero indica lançamento incompleto ou incorreto.'
+      : label==='Verificar (pendentes)'
+      ? 'Lançamentos classificados como Verificar devem ser zero. Indicam registros provisórios que precisam ser reclassificados na categoria correta.'
+      : 'Lançamentos de Descarga devem somar zero por competência. Um saldo diferente de zero indica divergência entre a saída e a entrada correspondente.';
+    const infoBtnHtml = `<button class="info-btn" style="margin-top:10px;" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'✕ Fechar':'? Como interpretar';">? Como interpretar</button><div class="info-panel">${infoTexto}</div>`;
 
     let listHTML = '';
     if(divergMes.length > 0){
@@ -1942,13 +1954,14 @@ function renderCtrl(){
           <div style="width:36px;height:36px;border-radius:50%;background:${iconBg};
                       display:flex;align-items:center;justify-content:center;font-size:18px;">${icon}</div>
           <div>
-            <div style="font-size:13px;font-weight:500;">${label}</div>
+            <div style="font-size:13px;font-weight:${labelWeight};color:${labelColor};">${label}</div>
             <div style="font-size:11px;color:var(--text3);">Deve ser zero</div>
           </div>
         </div>
         <div style="font-size:20px;font-weight:600;color:${valColor};font-family:var(--mono);">${fmtBR(total)}</div>
         ${hasDiverg ? '<div style="font-size:11px;color:var(--text3);margin-top:4px;">⚠ Revisar base de dados</div>' : ''}
         ${listHTML}
+        ${infoBtnHtml}
       </div>`;
   });
 
@@ -1976,6 +1989,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     renderRanking();
     renderScore();
     renderCtrl();
+    initChartInfo();
   }catch(err){
     console.error(err);
     const msg = document.getElementById('dl-msg');
@@ -1985,6 +1999,75 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   const overlay = document.getElementById('dl-loading');
   if(overlay){ overlay.classList.add('hide'); setTimeout(()=>overlay.remove(), 400); }
 });
+
+// ═══════════════════════════════════════════════════
+// INFO — "Como interpretar" em cada gráfico e cartão
+// ═══════════════════════════════════════════════════
+const CHART_INFO = {
+  'ch-g1':            'Resultado líquido por ano (Receita − Despesas operacionais). Barras verdes indicam lucro; vermelhas indicam prejuízo no período.',
+  'ch-g2':            'Lucro operacional mês a mês no ano atual. Útil para identificar sazonalidade e meses com resultado negativo.',
+  'ch-saldo':         'Saldo bancário acumulado por placa/centro de custo. Reflete o resultado líquido de cada veículo desde o início dos registros.',
+  'ch-rosca-tipos':   'Distribuição percentual de todos os lançamentos por tipo: Receita, Despesa, Juros, Compra e Venda de Veículos e Distribuição de Lucros.',
+  'ch-pagar-receber': 'Lançamentos sem data de pagamento registrada. Barras verdes = valores a receber (positivos); vermelhas = valores a pagar (negativos).',
+  'ch-cashflow':      'Comparativo mensal entre regime de caixa (data de pagamento) e competência (data do lançamento). Divergências indicam atrasos ou antecipações.',
+  'ch-acc':           'Saldo financeiro total acumulado ao longo do tempo. Tendência crescente indica saúde financeira positiva.',
+  'ch-placa-lucro':   'Resultado operacional acumulado por veículo/placa, todos os anos. Verde = lucro; vermelho = prejuízo operacional.',
+  'ch-a1':            'Total de receitas agrupadas por ano desde 2015. Inclui todos os lançamentos classificados como Receita.',
+  'ch-a1-mo':         'Receitas distribuídas mês a mês no ano atual. Permite identificar sazonalidade e meses de maior faturamento.',
+  'ch-a2':            'Total de despesas agrupadas por ano desde 2015. Inclui todas as saídas operacionais registradas.',
+  'ch-a2-mo':         'Despesas distribuídas mês a mês no ano atual. Auxilia no controle e previsão de gastos mensais.',
+  'ch-a3':            'Total investido em aquisição de veículos por ano. Representa o imobilizado comprado no período.',
+  'ch-a3-mo':         'Compras de veículos mês a mês no ano atual.',
+  'ch-a4':            'Total recebido com venda de veículos por ano. Representa a desinversão do imobilizado.',
+  'ch-a4-mo':         'Vendas de veículos mês a mês no ano atual.',
+  'ch-a5':            'Total de juros por ano. Valores negativos indicam juros recebidos, estornos ou créditos lançados como Juros.',
+  'ch-a5-mo':         'Juros distribuídos mês a mês no ano atual.',
+  'ch-a6':            'Total distribuído aos sócios por ano. Representa a retirada do lucro operacional acumulado.',
+  'ch-a6-mo':         'Distribuição de lucros mês a mês no ano atual.',
+  'ch-r7':            'Rentabilidade operacional anual de 2015 a 2025. Exclui categorias não operacionais: Consolidado, Dist. Lucro, Imobilizado e Verificar.',
+  'ch-r8':            'Resultado operacional mês a mês no ano atual. Exclui as mesmas categorias não operacionais do gráfico anual.',
+  'ch-r9':            'Resultado operacional acumulado por veículo no período selecionado. Verde = rentável; vermelho = operação deficitária.',
+};
+
+function initChartInfo(){
+  Object.entries(CHART_INFO).forEach(([cid, texto])=>{
+    const canvas = document.getElementById(cid);
+    if(!canvas) return;
+    const card = canvas.closest('.chart-card');
+    if(!card) return;
+    if(card.querySelector('.info-btn')) return;
+
+    let header = card.querySelector('.chart-header');
+    if(!header){
+      const title = card.querySelector('.chart-title');
+      if(!title) return;
+      header = document.createElement('div');
+      header.className = 'chart-header';
+      header.style.marginBottom = '14px';
+      title.style.marginBottom = '0';
+      title.parentNode.insertBefore(header, title);
+      header.appendChild(title);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'info-btn';
+    btn.textContent = '? Como interpretar';
+
+    const panel = document.createElement('div');
+    panel.className = 'info-panel';
+    panel.textContent = texto;
+
+    btn.addEventListener('click', ()=>{
+      panel.classList.toggle('open');
+      btn.textContent = panel.classList.contains('open') ? '✕ Fechar' : '? Como interpretar';
+    });
+
+    header.appendChild(btn);
+    const wrap = card.querySelector('.chart-wrap');
+    if(wrap) card.insertBefore(panel, wrap);
+    else card.appendChild(panel);
+  });
+}
 </script>
 </body>
 </html>

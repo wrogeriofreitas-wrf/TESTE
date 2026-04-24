@@ -500,13 +500,13 @@ table.dre td.col-total{
   <div class="nav-group">
     <div class="nav-label" onclick="toggleNav(this)">Análises</div>
     <div class="nav-items">
-      <div class="nav-item" onclick="nav('p-receita',this)"><span class="nav-icon">↑</span><span style="text-decoration:underline;text-underline-offset:3px;">Receitas</span></div>
-      <div class="nav-item" onclick="nav('p-despesa',this)"><span class="nav-icon">↓</span><span style="text-decoration:underline;text-underline-offset:3px;">Despesas</span></div>
-      <div class="nav-item" onclick="nav('p-compra',this)"><span class="nav-icon">⇩</span><span style="text-decoration:underline;text-underline-offset:3px;">Compra Veículos</span></div>
-      <div class="nav-item" onclick="nav('p-venda',this)"><span class="nav-icon">⇧</span><span style="text-decoration:underline;text-underline-offset:3px;">Venda Veículos</span></div>
-      <div class="nav-item" onclick="nav('p-juros',this)"><span class="nav-icon">%</span><span style="text-decoration:underline;text-underline-offset:3px;">Juros</span></div>
-      <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span><span style="text-decoration:underline;text-underline-offset:3px;">Dist. Lucros</span></div>
-      <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span><span style="text-decoration:underline;text-underline-offset:3px;">Rentabilidades</span></div>
+      <div class="nav-item" onclick="nav('p-receita',this)"><span class="nav-icon">↑</span><span>Receitas</span></div>
+      <div class="nav-item" onclick="nav('p-despesa',this)"><span class="nav-icon">↓</span><span>Despesas</span></div>
+      <div class="nav-item" onclick="nav('p-compra',this)"><span class="nav-icon">⇩</span><span>Compra Veículos</span></div>
+      <div class="nav-item" onclick="nav('p-venda',this)"><span class="nav-icon">⇧</span><span>Venda Veículos</span></div>
+      <div class="nav-item" onclick="nav('p-juros',this)"><span class="nav-icon">%</span><span>Juros</span></div>
+      <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span><span>Dist. Lucros</span></div>
+      <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span><span>Rentabilidades</span></div>
     </div>
   </div>
   <div class="nav-group">
@@ -529,8 +529,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0</div>
-      <div id="sb-data-json" style="margin-top:2px;"></div>
+      <div>Versão 1.0.1</div>
     </div>
   </div>
   </div>
@@ -577,6 +576,8 @@ table.dre td.col-total{
     <span id="f-summary"></span>
   </div>
   <div class="alert-bar" id="ov-alerts"></div>
+  <!-- FILTRO DE ANO -->
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;" id="ov-yr-pills"></div>
 
   <!-- 5 CARDS -->
   <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(175px,1fr));margin-bottom:20px;">
@@ -931,7 +932,7 @@ async function loadData(){
         el.innerHTML = el.textContent + ` <em style="font-size:12px;font-weight:400;color:var(--text3);"> — Atualizado em: ${dataFmt}</em>`;
       });
       const sbData = document.getElementById('sb-data-json');
-      if(sbData) sbData.textContent = `JSON: ${dataFmt}`;
+      if(sbData) sbData.textContent = ``;
     }
     return true;
   }catch(err){
@@ -1235,6 +1236,7 @@ function toggleNav(labelEl){
 
 // ── MULTI-YEAR RANKING PILLS ──
 const _rankYrs = new Set(); // empty = tudo
+const _ovYrs   = new Set(); // empty = tudo (Visão Geral)
 
 function initRankingPills(){
   const wrap=document.getElementById('rank-yr-pills');
@@ -1278,6 +1280,42 @@ function syncRankPills(){
       p.classList.toggle('yr-sel', _rankYrs.has(yr));
       p.classList.remove('yr-all');
     }
+  });
+}
+function syncOvPills(){
+  document.querySelectorAll('#ov-yr-pills .yr-pill').forEach(p=>{
+    const yr=p.dataset.yr;
+    if(yr===''){
+      p.classList.toggle('yr-all', _ovYrs.size===0);
+      p.classList.remove('yr-sel');
+    } else {
+      p.classList.toggle('yr-sel', _ovYrs.has(yr));
+      p.classList.remove('yr-all');
+    }
+  });
+}
+function initOvFilter(){
+  const wrap=document.getElementById('ov-yr-pills');
+  if(!wrap) return;
+  const allPill=document.createElement('div');
+  allPill.className='yr-pill yr-all';
+  allPill.textContent='Todos';
+  allPill.dataset.yr='';
+  allPill.onclick=()=>{ _ovYrs.clear(); syncOvPills(); renderOverview(); };
+  wrap.appendChild(allPill);
+  ANOS12.forEach(yr=>{
+    const p=document.createElement('div');
+    p.className='yr-pill'; p.textContent=yr; p.dataset.yr=yr;
+    p.onclick=()=>{
+      if(p.shiftKey||false){
+        if(_ovYrs.has(yr)) _ovYrs.delete(yr); else _ovYrs.add(yr);
+      } else {
+        _ovYrs.clear(); _ovYrs.add(yr);
+      }
+      if(_ovYrs.size===ANOS12.length) _ovYrs.clear();
+      syncOvPills(); renderOverview();
+    };
+    wrap.appendChild(p);
   });
 }
 function toggleSidebar(){
@@ -1362,7 +1400,8 @@ function initFilters(){
 // ═══════════════════════════════════════════════════
 function renderOverview(){
   const byTY=STATIC.byTipoYear;
-  function somaTotal(t){return Object.values(byTY[t]||{}).reduce((a,b)=>a+b,0);}
+  const anosAtivos = _ovYrs.size>0 ? ANOS12.filter(y=>_ovYrs.has(y)) : ANOS12;
+  function somaTotal(t){ return anosAtivos.reduce((s,y)=>s+(byTY[t]?.[y]||0),0); }
   const REC_RAW=somaTotal('Receita'),DESP_RAW=somaTotal('Despesa');
   const DIST_RAW=somaTotal('Distribuição Lucro'),JUR_RAW=somaTotal('Juros');
   const CMP_RAW=somaTotal('Compra de Veículo'),VND_RAW=somaTotal('Venda De Veículo');
@@ -1380,7 +1419,10 @@ function renderOverview(){
   const lblC=isDark?'#e2e8f0':'#1a2740';
   const anoAtual=new Date().getFullYear();
   const recA=byTY['Receita']||{},despA=byTY['Despesa']||{};
-  const g1Anos=ANOS12.filter(y=>parseInt(y)<anoAtual);
+  // Gráfico anual: apenas anos ativos, excluindo ano atual se "Todos"
+  const g1Anos = _ovYrs.size>0
+    ? anosAtivos
+    : ANOS12.filter(y=>parseInt(y)<anoAtual);
   const g1Vals=g1Anos.map(y=>(recA[y]||0)+(despA[y]||0));
   mkChart('ch-lucro-anual',{type:'bar',data:{labels:g1Anos,datasets:[{label:'Lucro',data:g1Vals,
     backgroundColor:g1Vals.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
@@ -1390,9 +1432,11 @@ function renderOverview(){
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
+  // Gráfico mensal: se 1 ano selecionado usa esse; caso contrário usa ano atual
+  const anoMensal = _ovYrs.size===1 ? parseInt([..._ovYrs][0]) : anoAtual;
   const g2V=Array(12).fill(0);
   for(let k=0;k<R.length;k++){const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
-    if(!mo.startsWith(String(anoAtual)))continue;
+    if(!mo.startsWith(String(anoMensal)))continue;
     if(ti==='Receita'||ti==='Despesa')g2V[parseInt(mo.slice(5,7))-1]+=row[I_VAL];}
   const g2M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   mkChart('ch-lucro-mensal',{type:'bar',data:{labels:g2M,datasets:[{label:'Lucro',
@@ -1400,16 +1444,17 @@ function renderOverview(){
     backgroundColor:g2V.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}},
-      title:{display:true,text:'Acumulado '+anoAtual+': '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
+      title:{display:true,text:'Acumulado '+anoMensal+': '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
-  const sA={};ANOS12.forEach(y=>sA[y]=0);
+  // Saldo bancário: filtrado por anos ativos
+  const sA={};anosAtivos.forEach(y=>sA[y]=0);
   for(let k=0;k<R.length;k++){const row=R[k];const dpi=row[I_DP];
     if(dpi===-1||dpi>=MO.length)continue;const yr=(MO[dpi]||'').slice(0,4);
     if(sA[yr]!==undefined)sA[yr]+=row[I_VAL];}
   let acc=0;const g3A=[],g3V=[];
-  ANOS12.forEach(y=>{acc+=sA[y];g3A.push(y);g3V.push(Math.round(acc*100)/100);});
+  anosAtivos.forEach(y=>{acc+=sA[y];g3A.push(y);g3V.push(Math.round(acc*100)/100);});
   mkChart('ch-saldo-bancario',{type:'line',data:{labels:g3A,datasets:[{label:'Saldo',data:g3V,
     borderColor:'rgba(59,158,255,1)',backgroundColor:isDark?'rgba(59,158,255,0.10)':'rgba(59,158,255,0.15)',
     fill:true,tension:0.4,pointRadius:4,pointHoverRadius:7,pointBackgroundColor:'rgba(59,158,255,1)',borderWidth:2}]},
@@ -1417,6 +1462,7 @@ function renderOverview(){
       tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
+  // Rosca: filtrada por anos ativos
   const rT=[{label:'Receita',val:Math.abs(REC_RAW),color:'#10d9a0'},
     {label:'Despesa',val:Math.abs(DESP_RAW),color:'#f05252'},
     {label:'Dist. Lucro',val:Math.abs(DIST_RAW),color:'#a78bfa'},
@@ -1430,6 +1476,7 @@ function renderOverview(){
     borderWidth:isDark?0:1,borderColor:isDark?'transparent':'rgba(255,255,255,0.6)',hoverOffset:10}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>c.label+': '+fmtBR(c.parsed)}}}}});
+  // ─── Contas a Pagar x Receber: SEMPRE todos os anos, não usa _ovYrs ───
   let aRec=0,aPag=0;
   for(let k=0;k<R.length;k++){const row=R[k];if(row[I_DP]!==-1)continue;
     const v=row[I_VAL];if(v>0)aRec+=v;else aPag+=Math.abs(v);}
@@ -1650,7 +1697,7 @@ function renderSimple(prefix, tipoName){
   ANOS12.forEach((y,i)=>{ if(Math.abs(vals[i])>Math.abs(bestVal)){bestVal=vals[i];bestYr=y;} });
 
   setText(prefix+'-tot', fmtBR(total));
-  setText(prefix+'-best', bestYr+' — '+fmtBR(bestVal));
+  setText(prefix+'-best', bestYr+' '+fmtBR(bestVal));
   setText(prefix+'-2026', fmtBR(byYr['2026']));
 
   const posC=tipoName==='Receita'||tipoName==='Venda De Veículo'?mkRGBA(GREEN,'0.75'):tipoName==='Distribuição Lucro'?mkRGBA(AMBER,'0.75'):mkRGBA(RED,'0.75');
@@ -1718,7 +1765,7 @@ function renderRent(){
   const best=ryVals.reduce((b,v,i)=>v>b.v?{v,i}:b,{v:-Infinity,i:0});
 
   setText('r7-tot', fmtBR(ryVals.reduce((a,b)=>a+b,0)));
-  setText('r7-best', ANOS12[best.i]+' — '+fmtBR(best.v));
+  setText('r7-best', ANOS12[best.i]+' '+fmtBR(best.v));
   setText('r8-tot', fmtBR(acum2026));
 
   mkChart('ch-r7',barCfg(ANOS12.slice(0,-1),ryVals,mkRGBA(GREEN,'0.75'),mkRGBA(RED,'0.75')));
@@ -1999,6 +2046,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     STATIC = precompute(); // agora R, CC, CAT, etc estão preenchidos
     initFilters();
     initRankingFilter();
+    initOvFilter();
     initScoreFilter();
     renderOverview();
     renderCashflow();

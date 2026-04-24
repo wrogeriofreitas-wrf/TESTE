@@ -524,10 +524,15 @@ table.dre td.col-total{
       </div>
     </div>
   </div>
-  <div class="sidebar-footer" style="display:none"></div>
+  <div class="sidebar-footer">
     <div class="logout-btn" onclick="logout()" title="Sair do sistema">
       <span style="font-size:13px;">⎋</span> Sair
     </div>
+    <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
+      <div>Versão 1.0</div>
+      <div id="sb-data-json" style="margin-top:2px;"></div>
+    </div>
+  </div>
   </div>
 </nav>
 
@@ -917,6 +922,17 @@ async function loadData(){
     CC  = _D.CC;  CAT = _D.CAT;  TIPO= _D.TIPO;
     MO  = _D.MO;  DRV = _D.DRV;  R   = _D.R;
     OP_CCS = CC.filter(c=>!EXCL_CC.has(c));
+
+    // Data do JSON → injeta em todos os page-title e sidebar
+    if(payload.meta && payload.meta.gerado){
+      const partes = payload.meta.gerado.split(' ')[0].split('-'); // "2026-04-21"
+      const dataFmt = `${partes[2]}/${partes[1]}/${partes[0]}`;
+      document.querySelectorAll('.page-title').forEach(el=>{
+        el.innerHTML = el.textContent + ` <em style="font-size:12px;font-weight:400;color:var(--text3);"> — Atualizado em: ${dataFmt}</em>`;
+      });
+      const sbData = document.getElementById('sb-data-json');
+      if(sbData) sbData.textContent = `JSON: ${dataFmt}`;
+    }
     return true;
   }catch(err){
     console.error('Erro carregando dados.json:', err);

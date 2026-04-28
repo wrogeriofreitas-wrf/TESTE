@@ -500,10 +500,11 @@ table.dre td.col-total{
   <div class="nav-group">
     <div class="nav-label" onclick="toggleNav(this)">Análises</div>
     <div class="nav-items">
-      <div class="nav-item" onclick="nav('p-analise',this)"><span class="nav-icon">📊</span>Resultado Financeiro</div>
+      <div class="nav-item" onclick="nav('p-analise',this)"><span class="nav-icon">◫</span>Resultado Financeiro</div>
       <div class="nav-item" onclick="nav('p-compravenda',this)"><span class="nav-icon">⇅</span>Compras x Vendas</div>
       <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span>Dist. Lucros</div>
       <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span>Rentabilidades</div>
+      <div class="nav-item" onclick="nav('p-roe',this)"><span class="nav-icon">◉</span>ROE por Veículo</div>
     </div>
   </div>
   <div class="nav-group">
@@ -525,7 +526,6 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Patrimônio</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-fichas',this)"><span class="nav-icon">📋</span>Fichas dos Veículos</div>
-      <div class="nav-item" onclick="nav('p-roe',this)"><span class="nav-icon">📈</span>ROE por Veículo</div>
     </div>
   </div>
   <div class="sidebar-footer">
@@ -533,7 +533,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0.2 Teste</div>
+      <div>Versão 1.0.3 Teste</div>
     </div>
   </div>
   </div>
@@ -702,6 +702,15 @@ table.dre td.col-total{
     <div class="chart-header"><div><div class="chart-title">Saldo Acumulado</div><div class="chart-sub">Saldo financeiro acumulado ao longo do tempo</div></div></div>
     <div class="chart-wrap" style="height:220px"><canvas id="ch-saldo" role="img" aria-label="Saldo acumulado"></canvas></div>
   </div>
+  <div class="chart-card" style="border-left:3px solid var(--amber);">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Impacto do Imobilizado no Caixa</div>
+        <div class="chart-sub">Compra e Venda de Veículos — movimentações que saem do fluxo operacional</div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:240px"><canvas id="ch-imob" role="img" aria-label="Impacto imobilizado"></canvas></div>
+  </div>
 </div>
 
 <!-- ════════════════════════════════
@@ -714,6 +723,10 @@ table.dre td.col-total{
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;" id="rank-yr-pills">
     <!-- pills inserted by JS -->
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;">
+    <span style="font-size:11px;color:var(--text3);font-family:var(--mono);">Período:</span>
+    <div id="rank-period-pills" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
   </div>
   <div class="kpi-grid" style="margin-bottom:16px;">
     <div class="kpi-card green"><div class="kpi-label">Total Receitas</div><div class="kpi-value green" id="rank-tot-rec">—</div></div>
@@ -728,21 +741,37 @@ table.dre td.col-total{
 ════════════════════════════════ -->
 <div id="p-score" class="page">
   <div class="page-header">
-    <div><div class="page-title">Score & Alertas</div><div class="page-sub">Avaliação automática por veículo</div></div>
+    <div><div class="page-title">Score & Alertas</div><div class="page-sub">Eficiência operacional por veículo — custo, consumo e rentabilidade</div></div>
   </div>
   <div class="alert-bar" id="sc-alerts"></div>
   <div class="filter-bar" style="margin-bottom:16px;">
     <div class="filter-group">
-      <span class="filter-label">Análise</span>
+      <span class="filter-label">Ano</span>
       <select id="sc-yr" onchange="renderScore()">
-        <option value="">Total Acumulado</option>
+        <option value="">Acumulado</option>
       </select>
     </div>
   </div>
+  <!-- KPIs resumo frota -->
+  <div class="kpi-grid" style="margin-bottom:16px;">
+    <div class="kpi-card green"><div class="kpi-label">Total KM rodado</div><div class="kpi-value green" id="sc-tot-km">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">Custo médio /km</div><div class="kpi-value amber" id="sc-avg-cpkm">—</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Receita média /km</div><div class="kpi-value blue" id="sc-avg-rpkm">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Consumo médio</div><div class="kpi-value green" id="sc-avg-kml">—</div></div>
+  </div>
   <div class="score-grid" id="score-grid"></div>
-  <div class="chart-card">
-    <div class="chart-header"><div><div class="chart-title">Lucro por Placa</div><div class="chart-sub">Resultado acumulado total</div></div></div>
-    <div class="chart-wrap" style="height:280px"><canvas id="ch-placa-lucro" role="img" aria-label="Lucro por placa"></canvas></div>
+  <!-- Gráficos comparativos -->
+  <div class="chart-card" style="margin-top:16px;">
+    <div class="chart-header"><div><div class="chart-title">Custo por KM por veículo (R$/km)</div><div class="chart-sub">Menor valor = mais eficiente. Barras verdes = abaixo da média da frota.</div></div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-cpkm" role="img" aria-label="Custo por km"></canvas></div>
+  </div>
+  <div class="chart-card" style="margin-top:16px;">
+    <div class="chart-header"><div><div class="chart-title">Consumo (km/litro) por veículo</div><div class="chart-sub">Maior valor = mais econômico. Barras verdes = acima da média da frota.</div></div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-kml" role="img" aria-label="Consumo km/litro"></canvas></div>
+  </div>
+  <div class="chart-card" style="margin-top:16px;">
+    <div class="chart-header"><div><div class="chart-title">Lucro operacional por veículo (R$)</div><div class="chart-sub">Verde = lucro · Vermelho = prejuízo</div></div></div>
+    <div class="chart-wrap" style="height:260px"><canvas id="ch-placa-lucro" role="img" aria-label="Lucro por placa"></canvas></div>
   </div>
 </div>
 
@@ -751,10 +780,11 @@ table.dre td.col-total{
 ════════════════════════════════ -->
 <div id="p-analise" class="page">
   <div class="page-header"><div><div class="page-title">Resultado Financeiro</div><div class="page-sub">Receitas, Despesas e Juros — visão comparativa</div></div></div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;" id="an-yr-pills"></div>
   <div class="kpi-grid">
-    <div class="kpi-card green"><div class="kpi-label">Total Receitas (2015–2026)</div><div class="kpi-value green" id="an-rec">—</div></div>
-    <div class="kpi-card red"><div class="kpi-label">Total Despesas (2015–2026)</div><div class="kpi-value red" id="an-desp">—</div></div>
-    <div class="kpi-card amber"><div class="kpi-label">Total Juros (2015–2026)</div><div class="kpi-value amber" id="an-jur">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Total Receitas</div><div class="kpi-value green" id="an-rec">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">Total Despesas</div><div class="kpi-value red" id="an-desp">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">Total Juros</div><div class="kpi-value amber" id="an-jur">—</div></div>
   </div>
   <div class="chart-card">
     <div class="chart-title" style="margin-bottom:14px">Receitas × Despesas × Juros por ano</div>
@@ -1205,6 +1235,25 @@ function nav(id, el){
   renderPage(id);
 }
 function goHome(){
+  // Limpar todos os filtros de todas as telas
+  _ovYrs.clear();
+  _rankYrs.clear();
+  _cfPeriod='mensal';
+  _anYrs.clear();
+  _cvAnoSel=null;
+  // Resetar pills visuais
+  syncOvPills();
+  syncRankPills();
+  syncAnPills();
+  // Resetar período cashflow
+  document.querySelectorAll('#cf-period-pills .yr-pill').forEach((p,i)=>{
+    p.classList.remove('yr-all','yr-sel');
+    if(i===0) p.classList.add('yr-all');
+  });
+  // Resetar renderizações cacheadas para forçar re-render
+  _rendered['p-analise']=0;
+  _rendered['p-compravenda']=0;
+  // Ir para visão geral
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('p-overview');
@@ -1237,6 +1286,26 @@ function toggleNav(labelEl){
 // ── MULTI-YEAR RANKING PILLS ──
 const _rankYrs = new Set(); // empty = tudo
 const _ovYrs   = new Set(); // empty = tudo (Visão Geral)
+let _rankPeriod = ''; // '' = todos, 'ult12', 'ult6'
+const _anYrs = new Set(); // Resultado Financeiro filter
+
+function initRankingPeriodPills(){
+  const wrap=document.getElementById('rank-period-pills');
+  if(!wrap||wrap.children.length>0) return;
+  [['','Todos os anos'],['ult12','Últ. 12 meses'],['ult6','Últ. 6 meses']].forEach(([val,lbl])=>{
+    const p=document.createElement('div');
+    p.className='yr-pill'+(val===_rankPeriod?' yr-all':'');
+    p.textContent=lbl;
+    p.onclick=()=>{
+      _rankPeriod=val;
+      wrap.querySelectorAll('.yr-pill').forEach(x=>x.classList.remove('yr-all','yr-sel'));
+      p.classList.add('yr-all');
+      if(val!=='') {_rankYrs.clear();syncRankPills();}
+      renderRanking();
+    };
+    wrap.appendChild(p);
+  });
+}
 
 function initRankingPills(){
   const wrap=document.getElementById('rank-yr-pills');
@@ -1288,27 +1357,86 @@ function syncOvPills(){
     if(yr===''){
       p.classList.toggle('yr-all',_ovYrs.size===0);
       p.classList.remove('yr-sel');
+    } else if(yr==='ult12'){
+      // special pill — highlight only when both current and prev year selected
+      p.classList.remove('yr-all','yr-sel');
     } else {
       p.classList.toggle('yr-sel',_ovYrs.has(yr));
       p.classList.remove('yr-all');
     }
   });
 }
+function syncAnPills(){
+  document.querySelectorAll('#an-yr-pills .yr-pill').forEach(p=>{
+    const yr=p.dataset.yr;
+    if(yr===''){
+      p.classList.toggle('yr-all',_anYrs.size===0);
+      p.classList.remove('yr-sel');
+    } else {
+      p.classList.toggle('yr-sel',_anYrs.has(yr));
+      p.classList.remove('yr-all');
+    }
+  });
+}
+function initAnFilter(){
+  const wrap=document.getElementById('an-yr-pills');
+  if(!wrap||wrap.children.length>0) return;
+  const allPill=document.createElement('div');
+  allPill.className='yr-pill yr-all';
+  allPill.textContent='Todos';
+  allPill.dataset.yr='';
+  allPill.onclick=()=>{_anYrs.clear();syncAnPills();renderAnalise();};
+  wrap.appendChild(allPill);
+  ANOS12.forEach(yr=>{
+    const p=document.createElement('div');
+    p.className='yr-pill';p.textContent=yr;p.dataset.yr=yr;
+    p.onclick=(e)=>{
+      if(e.ctrlKey||e.metaKey){
+        if(_anYrs.has(yr)) _anYrs.delete(yr); else _anYrs.add(yr);
+      } else {
+        _anYrs.clear();_anYrs.add(yr);
+      }
+      syncAnPills();renderAnalise();
+    };
+    wrap.appendChild(p);
+  });
+}
 function initOvFilter(){
   const wrap=document.getElementById('ov-yr-pills');
   if(!wrap||wrap.children.length>0) return;
+  // Pill Todos
   const allPill=document.createElement('div');
   allPill.className='yr-pill yr-all';
   allPill.textContent='Todos';
   allPill.dataset.yr='';
   allPill.onclick=()=>{_ovYrs.clear();syncOvPills();renderOverview();};
   wrap.appendChild(allPill);
+  // Pill Últ 12m
+  const u12=document.createElement('div');
+  u12.className='yr-pill';u12.textContent='Últ. 12m';u12.dataset.yr='ult12';
+  u12.onclick=()=>{
+    const now=new Date();
+    const anoAtual=now.getFullYear();
+    _ovYrs.clear();
+    // Inclui ano atual e anterior se necessário
+    _ovYrs.add(String(anoAtual));
+    _ovYrs.add(String(anoAtual-1));
+    syncOvPills();renderOverview();
+  };
+  wrap.appendChild(u12);
+  // Pills por ano — Ctrl+clique para multi-select
   ANOS12.forEach(yr=>{
     const p=document.createElement('div');
     p.className='yr-pill';p.textContent=yr;p.dataset.yr=yr;
-    p.onclick=()=>{
-      _ovYrs.clear();_ovYrs.add(yr);
-      if(_ovYrs.size===ANOS12.length)_ovYrs.clear();
+    p.onclick=(e)=>{
+      if(e.ctrlKey||e.metaKey){
+        // Multi-select
+        if(_ovYrs.has(yr)) _ovYrs.delete(yr); else _ovYrs.add(yr);
+        if(_ovYrs.size===0) _ovYrs.clear();
+      } else {
+        // Single select
+        _ovYrs.clear();_ovYrs.add(yr);
+      }
       syncOvPills();renderOverview();
     };
     wrap.appendChild(p);
@@ -1323,7 +1451,7 @@ function renderPage(id){
   else if(id==='p-cashflow') renderCashflow();
   else if(id==='p-ranking') renderRanking();
   else if(id==='p-score') renderScore();
-  else if(id==='p-analise'    && !_rendered[id]){ renderAnalise(); _rendered[id]=1; }
+  else if(id==='p-analise') renderAnalise();
   else if(id==='p-compravenda'&& !_rendered[id]){ renderCompraVenda(); _rendered[id]=1; }
   else if(id==='p-lucro'      && !_rendered[id]){ renderSimple('a6','Distribuição Lucro'); _rendered[id]=1; }
   else if(id==='p-rent'       && !_rendered[id]){ renderRent(); _rendered[id]=1; }
@@ -1426,19 +1554,23 @@ function renderOverview(){
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
-  // Gráfico mensal: se 1 ano selecionado usa esse, senão usa ano atual
-  const anoMensal=_ovYrs.size===1?parseInt([..._ovYrs][0]):anoAtual;
-  const g2V=Array(12).fill(0);
-  for(let k=0;k<R.length;k++){const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
-    if(!mo.startsWith(String(anoMensal)))continue;
-    if(ti==='Receita'||ti==='Despesa')g2V[parseInt(mo.slice(5,7))-1]+=row[I_VAL];}
+  // Gráfico mensal: 1 ano = meses daquele ano; 2+ anos = meses de todos juntos; nenhum = ano atual
   const g2M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const g2V=Array(12).fill(0);
+  const anosParaMensal=_ovYrs.size>0?[..._ovYrs].sort():[];
+  const prefixosMensal=anosParaMensal.length>0?anosParaMensal:[String(anoAtual)];
+  for(let k=0;k<R.length;k++){const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
+    if(!prefixosMensal.some(a=>mo.startsWith(a)))continue;
+    if(ti==='Receita'||ti==='Despesa')g2V[parseInt(mo.slice(5,7))-1]+=row[I_VAL];}
+  const tituloMensal=_ovYrs.size===0?'Ano atual ('+anoAtual+')':
+    _ovYrs.size===1?'Meses de '+[..._ovYrs][0]:
+    'Meses acumulados — '+[..._ovYrs].sort().join(', ');
   mkChart('ch-lucro-mensal',{type:'bar',data:{labels:g2M,datasets:[{label:'Lucro',
     data:g2V.map(v=>Math.round(v*100)/100),
     backgroundColor:g2V.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}},
-      title:{display:true,text:'Resultado mensal '+anoMensal+': '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
+      title:{display:true,text:tituloMensal+' · Total: '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
@@ -1601,6 +1733,36 @@ function renderCashflow(){
       scales:{y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC2,font:{size:10},autoSkip:false}}}
     }});
+
+  // Gráfico imobilizado — Compra e Venda de Veículos agrupados por ano
+  const imobByYr={};ANOS12.forEach(y=>imobByYr[y]={cmp:0,vnd:0});
+  for(let i=0;i<R.length;i++){
+    const row=R[i];
+    const tipo=TIPO[row[I_TIPO]];
+    if(tipo!=='Compra de Veículo'&&tipo!=='Venda De Veículo') continue;
+    const mo=MO[row[I_DC]]||'';
+    const yr=mo.slice(0,4);
+    if(!imobByYr[yr]) continue;
+    if(tipo==='Compra de Veículo') imobByYr[yr].cmp+=Math.abs(row[I_VAL]);
+    else imobByYr[yr].vnd+=row[I_VAL];
+  }
+  const imobCmp=ANOS12.map(y=>imobByYr[y].cmp);
+  const imobVnd=ANOS12.map(y=>imobByYr[y].vnd);
+  const saldoImob=ANOS12.map((y,i)=>imobVnd[i]-imobCmp[i]);
+  mkChart('ch-imob',{type:'bar',
+    data:{labels:ANOS12,datasets:[
+      {label:'Compras',data:imobCmp,backgroundColor:mkRGBA(RED,'0.7'),borderRadius:3},
+      {label:'Vendas',data:imobVnd,backgroundColor:mkRGBA(GREEN,'0.7'),borderRadius:3},
+      {label:'Saldo',data:saldoImob,type:'line',borderColor:mkRGBA(AMBER,'1'),
+        backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2,
+        pointBackgroundColor:mkRGBA(AMBER,'1')},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:tC2,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
+      scales:{y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}}},
+        x:{grid:{display:false},ticks:{color:tC2,font:{size:10},autoSkip:false}}}
+    }});
 }
 
 // ═══════════════════════════════════════════════════
@@ -1608,6 +1770,9 @@ function renderCashflow(){
 // ═══════════════════════════════════════════════════
 function renderRanking(){
   const yrs=_rankYrs; // Set; empty=all
+  // Período especial: ult6/ult12
+  const now=new Date();
+  const mesAtual=now.getFullYear()*12+now.getMonth();
   // Incluir CONSOLIDADO + veículos operacionais
   const allCCs=[...new Set([...OP_CCS,'CONSOLIDADO'])];
   const ccVals=allCCs.map(cc=>{
@@ -1616,18 +1781,29 @@ function renderRanking(){
       const row=R[i];
       if(CC[row[I_CC]]!==cc) continue;
       const mo=MO[row[I_DC]]||'';
-      if(yrs.size>0 && !yrs.has(mo.slice(0,4))) continue;
+      if(_rankPeriod==='ult12'){
+        const [y,m]=mo.split('-').map(Number);
+        if((y*12+m-1)<mesAtual-12) continue;
+      } else if(_rankPeriod==='ult6'){
+        const [y,m]=mo.split('-').map(Number);
+        if((y*12+m-1)<mesAtual-6) continue;
+      } else if(yrs.size>0 && !yrs.has(mo.slice(0,4))) continue;
       const tipo=TIPO[row[I_TIPO]];
       if(tipo==='Receita') rec+=row[I_VAL];
       else if(tipo==='Despesa') cost+=row[I_VAL];
       km+=row[I_KM];
     }
     return {cc,rec,cost,luc:rec+cost,km,drv:(DRV[cc]||['—'])[0]};
-  }).filter(c=>Math.abs(c.rec)>0.01||Math.abs(c.cost)>0.01).sort((a,b)=>b.luc-a.luc);
+  }).filter(c=>Math.abs(c.rec)>0.01||Math.abs(c.cost)>0.01);
+  // CONSOLIDADO sempre último
+  const consolidado=ccVals.find(c=>c.cc==='CONSOLIDADO');
+  const outros=ccVals.filter(c=>c.cc!=='CONSOLIDADO').sort((a,b)=>b.luc-a.luc);
+  const sorted=consolidado?[...outros,consolidado]:outros;
+  const ccVals_=sorted;
 
   // Totalizador
-  const totRec=ccVals.reduce((s,c)=>s+c.rec,0);
-  const totCost=ccVals.reduce((s,c)=>s+c.cost,0);
+  const totRec=ccVals_.reduce((s,c)=>s+c.rec,0);
+  const totCost=ccVals_.reduce((s,c)=>s+c.cost,0);
   const totLuc=totRec+totCost;
   const totEl=document.getElementById('rank-tot-rec');
   if(totEl) totEl.textContent=fmtBR(totRec);
@@ -1636,11 +1812,12 @@ function renderRanking(){
   const lucEl2=document.getElementById('rank-tot-luc');
   if(lucEl2){lucEl2.textContent=fmtBR(totLuc);lucEl2.className='kpi-value '+(totLuc>=0?'green':'red');}
 
-  const maxAbs=Math.max(...ccVals.map(c=>Math.abs(c.luc)));
+  const maxAbs=Math.max(...ccVals_.map(c=>Math.abs(c.luc)));
   const el=document.getElementById('rank-list');
   el.innerHTML='';
-  ccVals.forEach((c,i)=>{
-    const isTop=i<3, isBot=i>=ccVals.length-3;
+  ccVals_.forEach((c,i)=>{
+    const isConsolidado=c.cc==='CONSOLIDADO';
+    const isTop=!isConsolidado&&i<3, isBot=!isConsolidado&&i>=ccVals_.length-(consolidado?4:3);
     const cls=isTop?'top':isBot?'bot':'';
     const pct=maxAbs>0?Math.abs(c.luc)/maxAbs*100:0;
     const barColor=c.luc>=0?'var(--green)':'var(--red)';
@@ -1665,6 +1842,10 @@ function renderRanking(){
 function renderScore(){
   const scYrSel=document.getElementById('sc-yr');
   const scYr=scYrSel?scYrSel.value:'';
+  const isDark=!document.body.classList.contains('light');
+  const gCS=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
+  const tCS=isDark?'#5a7090':'#6a8090';
+
   const ccVals=OP_CCS.map(cc=>{
     let rec=0,cost=0,km=0,lts=0,months=new Set();
     for(let i=0;i<R.length;i++){
@@ -1675,62 +1856,129 @@ function renderScore(){
       if(scYr && mo.slice(0,4)!==scYr) continue;
       if(tipo==='Receita'){rec+=row[I_VAL];months.add(mo);}
       else if(tipo==='Despesa') cost+=row[I_VAL];
-      km+=row[I_KM]; lts+=row[I_LTS];
+      if(row[I_KM]>0) km+=row[I_KM];
+      if(row[I_LTS]>0) lts+=row[I_LTS];
     }
     const luc=rec+cost;
     const margin=rec>0?(luc/rec)*100:0;
-    const cpkm=km>0?Math.abs(cost/km)*1000:0; // cost per 1000km
-    const consist=months.size;
-    // Score 0-100
+    // Custo por KM (R$ por km)
+    const cpkm=km>0?Math.abs(cost)/km:0;
+    // Receita por KM
+    const rpkm=km>0?rec/km:0;
+    // KM por litro
+    const kml=lts>0?km/lts:0;
+    // Score operacional:
+    // 30pts: margem (>20%=30, linear)
+    // 30pts: cpkm baixo (referência R$3,50/km = 0pts, R$0 = 30pts)
+    // 25pts: kml alto (referência 2km/l=0, 5km/l=25pts)
+    // 15pts: consistência meses (>20 meses = 15pts)
     let score=0;
-    score += Math.min(40, luc>0?40:Math.max(0,40+(luc/10000)*2));
-    score += Math.min(30, margin>20?30:Math.max(0,margin*1.5));
-    score += Math.min(30, consist>20?30:(consist/20)*30);
+    score+=Math.min(30, margin>0?Math.min(30,margin*1.5):0);
+    score+=Math.min(30, cpkm>0?Math.max(0,30-(cpkm/3.5)*30):0);
+    score+=Math.min(25, kml>0?Math.min(25,(kml/5)*25):0);
+    score+=Math.min(15, months.size>20?15:(months.size/20)*15);
     score=Math.round(score);
     const grade=score>=75?'A':score>=55?'B':score>=35?'C':'D';
-    return {cc,rec,cost,luc,margin,cpkm,consist,score,grade,drv:(DRV[cc]||['—'])[0]};
-  }).sort((a,b)=>b.score-a.score);
+    return {cc,rec,cost,luc,margin,cpkm,rpkm,kml,km,lts,months:months.size,score,grade};
+  }).filter(c=>c.km>0||Math.abs(c.rec)>0.01).sort((a,b)=>b.score-a.score);
 
-  // Score cards
+  // KPIs frota
+  const totKm=ccVals.reduce((s,c)=>s+c.km,0);
+  const avgCpkm=ccVals.filter(c=>c.cpkm>0).reduce((s,c)=>s+c.cpkm,0)/(ccVals.filter(c=>c.cpkm>0).length||1);
+  const avgRpkm=ccVals.filter(c=>c.rpkm>0).reduce((s,c)=>s+c.rpkm,0)/(ccVals.filter(c=>c.rpkm>0).length||1);
+  const avgKml=ccVals.filter(c=>c.kml>0).reduce((s,c)=>s+c.kml,0)/(ccVals.filter(c=>c.kml>0).length||1);
+  setText('sc-tot-km', totKm.toLocaleString('pt-BR')+' km');
+  setText('sc-avg-cpkm', 'R$ '+avgCpkm.toFixed(2).replace('.',','));
+  setText('sc-avg-rpkm', 'R$ '+avgRpkm.toFixed(2).replace('.',','));
+  setText('sc-avg-kml', avgKml.toFixed(2).replace('.',',')+' km/l');
+
+  // Cards por veículo
   const grid=document.getElementById('score-grid');
   grid.innerHTML='';
   ccVals.forEach(c=>{
-    const scoreColor=c.grade==='A'?'var(--green)':c.grade==='B'?'var(--blue)':c.grade==='C'?'var(--amber)':'var(--red)';
+    const sc=c.grade==='A'?'var(--green)':c.grade==='B'?'var(--blue)':c.grade==='C'?'var(--amber)':'var(--red)';
+    const cpkmOk=c.cpkm>0&&c.cpkm<=avgCpkm;
+    const kmlOk=c.kml>0&&c.kml>=avgKml;
     grid.innerHTML+=`
       <div class="score-card">
         <div class="score-top">
-          <div>
-            <div class="score-cc">${c.cc}</div>
-          </div>
+          <div><div class="score-cc">${c.cc}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${c.km.toLocaleString('pt-BR')} km · ${c.months} meses</div></div>
           <div class="score-badge ${c.grade}">${c.grade}</div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Lucro</span><span style="color:${c.luc>=0?'var(--green)':'var(--red)'}">${fmtK(c.luc)}</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.score)}%;background:${scoreColor}"></div></div>
+          <div class="score-bar-label"><span>Custo/km</span><span style="color:${cpkmOk?'var(--green)':'var(--red)'}">R$ ${c.cpkm.toFixed(2).replace('.',',')}</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.cpkm/5*100)}%;background:${cpkmOk?'var(--green)':'var(--red)'}"></div></div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Margem</span><span>${fmtPct(c.margin)}</span></div>
+          <div class="score-bar-label"><span>km/litro</span><span style="color:${kmlOk?'var(--green)':'var(--amber)'}">${c.kml.toFixed(2).replace('.',',')} km/l</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.kml/6*100)}%;background:${kmlOk?'var(--green)':'var(--amber)'}"></div></div>
+        </div>
+        <div class="score-bar-row">
+          <div class="score-bar-label"><span>Margem</span><span style="color:${c.margin>0?'var(--green)':'var(--red)'}">${fmtPct(c.margin)}</span></div>
           <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,Math.max(0,c.margin))}%;background:var(--blue)"></div></div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Score</span><span style="color:${scoreColor}">${c.score}/100</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${c.score}%;background:${scoreColor}"></div></div>
+          <div class="score-bar-label"><span>Score</span><span style="color:${sc}">${c.score}/100</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${c.score}%;background:${sc}"></div></div>
         </div>
       </div>`;
   });
 
-  // Alerts
+  // Alertas automáticos
   const alerts=[];
   const prejuizo=ccVals.filter(c=>c.luc<0);
-  if(prejuizo.length) alerts.push(['danger','⚠ Veículos com prejuízo: '+prejuizo.map(c=>c.cc).join(', ')]);
+  if(prejuizo.length) alerts.push(['danger','⚠ Prejuízo operacional: '+prejuizo.map(c=>c.cc).join(', ')]);
+  const altoCusto=ccVals.filter(c=>c.cpkm>avgCpkm*1.3&&c.km>0);
+  if(altoCusto.length) alerts.push(['warn','⚠ Custo/km acima da média da frota (+30%): '+altoCusto.map(c=>c.cc).join(', ')]);
+  const baixoConsumo=ccVals.filter(c=>c.kml>0&&c.kml<avgKml*0.7);
+  if(baixoConsumo.length) alerts.push(['warn','⚠ Consumo abaixo da média (-30%): '+baixoConsumo.map(c=>c.cc).join(', ')]);
   const gradeD=ccVals.filter(c=>c.grade==='D');
   if(gradeD.length) alerts.push(['warn','⚠ Score crítico (D): '+gradeD.map(c=>c.cc).join(', ')]);
-  const avgMargin=ccVals.reduce((a,b)=>a+b.margin,0)/ccVals.length;
-  const lowMargin=ccVals.filter(c=>c.margin<avgMargin*0.5&&c.rec>0);
-  if(lowMargin.length) alerts.push(['warn','⚠ Margem abaixo da média: '+lowMargin.map(c=>c.cc).join(', ')]);
   renderAlerts('sc-alerts',alerts);
 
-  // Chart
+  // Gráfico custo/km
+  const cpkmSorted=[...ccVals].sort((a,b)=>a.cpkm-b.cpkm);
+  mkChart('ch-cpkm',{type:'bar',
+    data:{labels:cpkmSorted.map(c=>c.cc),datasets:[{
+      label:'R$/km',
+      data:cpkmSorted.map(c=>parseFloat(c.cpkm.toFixed(3))),
+      backgroundColor:cpkmSorted.map(c=>c.cpkm<=avgCpkm?mkRGBA(GREEN,'0.78'):mkRGBA(RED,'0.78')),
+      borderWidth:0,borderRadius:4
+    },{
+      label:'Média',type:'line',
+      data:cpkmSorted.map(()=>parseFloat(avgCpkm.toFixed(3))),
+      borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
+      borderWidth:2,borderDash:[4,4],pointRadius:0
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:tCS,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toFixed(2)}}},
+      scales:{y:{grid:{color:gCS},ticks:{callback:v=>'R$ '+v.toFixed(2),color:tCS,font:{size:10}}},
+        x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}
+    }});
+
+  // Gráfico km/litro
+  const kmlSorted=[...ccVals].filter(c=>c.kml>0).sort((a,b)=>b.kml-a.kml);
+  mkChart('ch-kml',{type:'bar',
+    data:{labels:kmlSorted.map(c=>c.cc),datasets:[{
+      label:'km/litro',
+      data:kmlSorted.map(c=>parseFloat(c.kml.toFixed(2))),
+      backgroundColor:kmlSorted.map(c=>c.kml>=avgKml?mkRGBA(GREEN,'0.78'):mkRGBA(AMBER,'0.78')),
+      borderWidth:0,borderRadius:4
+    },{
+      label:'Média',type:'line',
+      data:kmlSorted.map(()=>parseFloat(avgKml.toFixed(2))),
+      borderColor:mkRGBA(BLUE,'1'),backgroundColor:'transparent',
+      borderWidth:2,borderDash:[4,4],pointRadius:0
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:tCS,font:{size:11},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(2)+' km/l'}}},
+      scales:{y:{grid:{color:gCS},ticks:{callback:v=>v.toFixed(1)+' km/l',color:tCS,font:{size:10}}},
+        x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}
+    }});
+
+  // Gráfico lucro
   mkChart('ch-placa-lucro',barCfg(
     ccVals.map(c=>c.cc),
     ccVals.map(c=>c.luc),
@@ -1977,6 +2225,7 @@ function exportDRE(){
 // ═══════════════════════════════════════════════════
 function initRankingFilter(){
   initRankingPills();
+  initRankingPeriodPills();
 }
 
 
@@ -2098,13 +2347,15 @@ function renderCtrl(){
 // RESULTADO FINANCEIRO (Receitas + Despesas + Juros)
 // ═══════════════════════════════════════════════════
 function renderAnalise(){
+  initAnFilter();
   const byTY=STATIC.byTipoYear;
+  const anosAtivosAn=_anYrs.size>0?ANOS12.filter(y=>_anYrs.has(y)):ANOS12;
   const recVals=ANOS12.map(y=>byTY['Receita']?.[y]||0);
   const despVals=ANOS12.map(y=>Math.abs(byTY['Despesa']?.[y]||0));
   const jurVals=ANOS12.map(y=>byTY['Juros']?.[y]||0);
-  const totRec=recVals.reduce((a,b)=>a+b,0);
-  const totDesp=despVals.reduce((a,b)=>a+b,0);
-  const totJur=jurVals.reduce((a,b)=>a+b,0);
+  const totRec=anosAtivosAn.reduce((s,y)=>s+(byTY['Receita']?.[y]||0),0);
+  const totDesp=anosAtivosAn.reduce((s,y)=>s+Math.abs(byTY['Despesa']?.[y]||0),0);
+  const totJur=anosAtivosAn.reduce((s,y)=>s+(byTY['Juros']?.[y]||0),0);
   setText('an-rec',fmtBR(totRec));
   setText('an-desp',fmtBR(totDesp));
   setText('an-jur',fmtBR(Math.abs(totJur)));
@@ -2113,12 +2364,15 @@ function renderAnalise(){
   const gCA=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tCA=isDark?'#5a7090':'#6a8090';
 
-  // Gráfico anual agrupado
+  // Gráfico anual — destacar anos ativos
+  const recColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(GREEN,'0.78'):mkRGBA(GREEN,'0.25'));
+  const despColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(RED,'0.78'):mkRGBA(RED,'0.25'));
+  const jurColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(AMBER,'0.78'):mkRGBA(AMBER,'0.25'));
   mkChart('ch-analise-yr',{type:'bar',
     data:{labels:ANOS12,datasets:[
-      {label:'Receitas',data:recVals,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
-      {label:'Despesas',data:despVals,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
-      {label:'Juros',data:jurVals.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3},
+      {label:'Receitas',data:recVals,backgroundColor:recColors,borderRadius:3},
+      {label:'Despesas',data:despVals,backgroundColor:despColors,borderRadius:3},
+      {label:'Juros',data:jurVals.map(v=>Math.abs(v)),backgroundColor:jurColors,borderRadius:3},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},
@@ -2127,16 +2381,20 @@ function renderAnalise(){
         x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
     }});
 
-  // Gráfico mensal — ano atual
+  // Gráfico mensal — dinâmico por seleção
   const anoAtualStr=String(new Date().getFullYear());
-  const el=document.getElementById('an-ano-label');
-  if(el) el.textContent=anoAtualStr;
+  const prefixosAn=_anYrs.size>0?[..._anYrs].sort():[anoAtualStr];
+  const lblAno=_anYrs.size===0?'Ano atual ('+anoAtualStr+')':
+    _anYrs.size===1?'Meses de '+[..._anYrs][0]:
+    'Acumulado '+[..._anYrs].sort().join('+');
+  const elLbl=document.getElementById('an-ano-label');
+  if(elLbl) elLbl.textContent=lblAno;
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const moRec=Array(12).fill(0),moDesp=Array(12).fill(0),moJur=Array(12).fill(0);
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const mo=MO[row[I_DC]]||'';
-    if(!mo.startsWith(anoAtualStr)) continue;
+    if(!prefixosAn.some(a=>mo.startsWith(a))) continue;
     const mIdx=parseInt(mo.slice(5,7),10)-1;
     if(mIdx<0||mIdx>11) continue;
     const tipo=TIPO[row[I_TIPO]];

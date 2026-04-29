@@ -702,10 +702,6 @@ table.dre td.col-total{
     <div class="chart-header"><div><div class="chart-title">Fluxo de Caixa</div><div class="chart-sub" id="cf-chart-sub">Entradas (verde) × Saídas (vermelho) — valores pagos</div></div></div>
     <div class="chart-wrap" style="height:300px"><canvas id="ch-cashflow" role="img" aria-label="Fluxo de caixa"></canvas></div>
   </div>
-  <div class="chart-card">
-    <div class="chart-header"><div><div class="chart-title">Saldo Acumulado</div><div class="chart-sub">Saldo financeiro acumulado ao longo do tempo</div></div></div>
-    <div class="chart-wrap" style="height:220px"><canvas id="ch-saldo" role="img" aria-label="Saldo acumulado"></canvas></div>
-  </div>
   <div class="chart-card" style="border-left:3px solid var(--amber);">
     <div class="chart-header">
       <div>
@@ -714,6 +710,10 @@ table.dre td.col-total{
       </div>
     </div>
     <div class="chart-wrap" style="height:240px"><canvas id="ch-imob" role="img" aria-label="Impacto imobilizado"></canvas></div>
+  </div>
+  <div class="chart-card">
+    <div class="chart-header"><div><div class="chart-title">Saldo Acumulado</div><div class="chart-sub">Saldo financeiro acumulado ao longo do tempo</div></div></div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-saldo" role="img" aria-label="Saldo acumulado"></canvas></div>
   </div>
 </div>
 
@@ -908,12 +908,7 @@ table.dre td.col-total{
 ════════════════════════════════ -->
 <div id="p-roe" class="page">
   <div class="page-header"><div><div class="page-title">ROE por Veículo</div><div class="page-sub">Retorno sobre o valor de mercado por ano</div></div></div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center;" id="roe-yr-pills"></div>
-  <div style="display:flex;gap:10px;margin-bottom:20px;align-items:center;">
-    <select id="roe-placa-sel" onchange="renderROE()" style="background:var(--bg2);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px 14px;font-size:12px;font-family:var(--mono);">
-      <option value="todas">Todas as placas</option>
-    </select>
-  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center;" id="roe-yr-pills"></div>
   <div id="roe-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:16px;margin-bottom:24px;"></div>
   <div>
     <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);" id="roe-rank-title">Ranking ROE</div>
@@ -1305,6 +1300,7 @@ function toggleNav(labelEl){
 const _rankYrs = new Set(); // empty = tudo
 const _ovYrs   = new Set(); // empty = tudo (Visão Geral)
 let _rankPeriod = ''; // '' = todos, 'ult12', 'ult6'
+let _ovPeriod   = ''; // '' = todos, 'ult12'
 const _anYrs = new Set(); // Resultado Financeiro filter
 const _lucYrs = new Set(); // Dist. Lucros filter
 let _lucPeriod = ''; // '' | 'ult3' | 'ult6' | 'ult12'
@@ -2662,8 +2658,27 @@ function renderCompraVendaMensal(){
 // ═══════════════════════════════════════════════════
 // PATRIMÔNIO — FICHAS DOS VEÍCULOS
 // ═══════════════════════════════════════════════════
-const SOCIO_COR_PAT={Rogerio:'#10d9a0',Emerson:'#3b9eff',Denis:'#f0b429',Vanderlei:'#a78bfa',Guilherme:'#FF7C24'};
+const SOCIO_COR_PAT={Rogerio:'#f05252',Emerson:'#10d9a0',Denis:'#f0b429',Vanderlei:'#a78bfa',Guilherme:'#FF7C24'};
 function socioCorPat(n){return SOCIO_COR_PAT[n]||'#94a3b8';}
+
+// Ícones estilizados por sócio
+const SOCIO_ICON={
+  Rogerio:`<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="11" cy="11" r="11" fill="#cc0000"/>
+    <path d="M11 2 L11 20" stroke="white" stroke-width="1.5"/>
+    <path d="M2 11 L20 11" stroke="white" stroke-width="1.5"/>
+    <path d="M4.5 4.5 L17.5 17.5" stroke="#000033" stroke-width="1.5"/>
+    <path d="M17.5 4.5 L4.5 17.5" stroke="#000033" stroke-width="1.5"/>
+    <circle cx="11" cy="11" r="4" fill="none" stroke="white" stroke-width="1"/>
+    <text x="11" y="14.5" text-anchor="middle" font-size="5" font-weight="bold" fill="white" font-family="sans-serif">SPFC</text>
+  </svg>`,
+  Emerson:`<svg width="22" height="22" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="11" cy="11" r="11" fill="#006400"/>
+    <circle cx="11" cy="11" r="8" fill="none" stroke="white" stroke-width="1.5"/>
+    <text x="11" y="13" text-anchor="middle" font-size="4.5" font-weight="bold" fill="white" font-family="sans-serif">SEP</text>
+  </svg>`
+};
+function socioIcon(n){return SOCIO_ICON[n]||'';}
 
 function renderFichas(){
   if(!window._PAT){renderFichasMsg('Carregando patrimônio...');loadPatrimonio().then(renderFichas);return;}
@@ -2680,28 +2695,45 @@ function renderFichas(){
   const lista=Object.entries(totais).sort((a,b)=>b[1]-a[1]);
   const maxV=lista[0]?.[1]||1;
   const tGrid=document.getElementById('fichas-total-grid');
-  if(tGrid) tGrid.innerHTML=lista.map(([nome,val],i)=>`
-    <div class="kpi-card" style="border-top:2px solid ${socioCorPat(nome)}">
-      <div class="kpi-label">#${i+1} — ${nome} (${cnt[nome]} veíc.)</div>
-      <div class="kpi-value" style="color:${socioCorPat(nome)}">${fmtBR(val)}</div>
+  if(tGrid) tGrid.innerHTML=lista.map(([nome,val],i)=>{
+    const isRog=nome==='Rogerio';
+    const isEme=nome==='Emerson';
+    const bgExtra=isRog?'background:rgba(240,82,82,0.08);':isEme?'background:rgba(16,217,160,0.05);':'';
+    const iconHtml=socioIcon(nome)?`<span style="float:right">${socioIcon(nome)}</span>`:'';
+    return `<div class="kpi-card" style="border-top:2px solid ${socioCorPat(nome)};${bgExtra}">
+      <div class="kpi-label">#${i+1} — ${nome} (${cnt[nome]} veíc.) ${iconHtml}</div>
+      <div class="kpi-value" style="color:${isRog?'#ffffff':socioCorPat(nome)}">${fmtBR(val)}</div>
       <div class="kpi-delta">Participação estimada</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   // Cards de veículos
   const grid=document.getElementById('fichas-grid');
   if(!grid) return;
   grid.innerHTML=DATA.sociedade.map(v=>{
-    const sociosHTML=v.socios.map(s=>`
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-        <div style="font-size:12px;color:var(--text);min-width:80px;">${s.nome}</div>
+    const sociosHTML=v.socios.map(s=>{
+      const isRog=s.nome==='Rogerio';
+      const isEme=s.nome==='Emerson';
+      const bgStyle=isRog?'background:rgba(240,82,82,0.15);border-radius:6px;padding:4px 6px;':
+                    isEme?'background:rgba(16,217,160,0.1);border-radius:6px;padding:4px 6px;':'padding:4px 6px;';
+      const pctStyle=isRog?'color:#ffffff;font-weight:700;':
+                     isEme?'color:#10d9a0;font-weight:700;':`color:${socioCorPat(s.nome)};font-weight:700;`;
+      const valStyle=isRog?'color:#ffffff;':isEme?'color:#10d9a0;':`color:${socioCorPat(s.nome)};`;
+      return `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;${bgStyle}">
+        <div style="display:flex;align-items:center;gap:6px;min-width:100px;">
+          ${socioIcon(s.nome)?`<span title="${s.nome}">${socioIcon(s.nome)}</span>`:''}
+          <div style="font-size:14px;font-weight:600;color:var(--text);">${s.nome}</div>
+        </div>
         <div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;">
           <div style="height:100%;border-radius:3px;width:${s.percentual}%;background:${socioCorPat(s.nome)};"></div>
         </div>
         <div style="min-width:110px;text-align:right;">
-          <div style="font-size:11px;font-weight:700;color:${socioCorPat(s.nome)};font-family:var(--mono);">${s.percentual.toFixed(3)}%</div>
-          <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${fmtBR(s.valor)}</div>
+          <div style="font-size:12px;font-family:var(--mono);${pctStyle}">${s.percentual.toFixed(3)}%</div>
+          <div style="font-size:11px;font-family:var(--mono);${valStyle}">${fmtBR(s.valor)}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     const pctRog=v.socios.find(s=>s.nome==='Rogerio')?.percentual||0;
     const benef=v.diretriz_rogerio.beneficiarios.map(b=>`${b.nome} (${b.percentual.toFixed(3)}%)`).join(' · ');
     return `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
@@ -2774,13 +2806,8 @@ function renderROE(){
     });
     syncRoePills();
   }
-  // Populate placa select once
-  const placaSel=document.getElementById('roe-placa-sel');
-  if(placaSel && placaSel.options.length<=1){
-    const placas=[...new Set(DATA.historico.map(r=>r.placa))].sort();
-    placas.forEach(p=>{const o=document.createElement('option');o.value=p;o.textContent=p;placaSel.appendChild(o);});
-  }
-  const placaSelVal=placaSel?.value||'todas';
+  // Populate placa select once - REMOVED, auto-filter by period
+  const placaSelVal='todas'; // always show all placas with data in period
 
   // Filter rows
   const now=new Date();const mesAtual=now.getFullYear()*12+now.getMonth()+1;

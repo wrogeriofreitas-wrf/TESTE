@@ -372,9 +372,9 @@ table.dre td.col-total{
   border:0.5px solid var(--border2);background:var(--bg3);color:var(--text2);
   transition:all .18s;font-family:var(--mono);user-select:none;
 }
-.yr-pill:hover{border-color:var(--green);color:var(--green);}
+.yr-pill:hover{border-color:var(--green);color:var(--green);background:var(--green2);}
 .yr-pill.yr-sel{background:rgba(59,158,255,0.18);border-color:var(--blue);color:var(--blue);}
-.yr-pill.yr-all{background:rgba(16,217,160,0.15);border-color:var(--green);color:var(--green);}
+.yr-pill.yr-all{background:rgba(59,158,255,0.18);border-color:var(--blue);color:var(--blue);}
 .yr-hint{font-size:10px;color:var(--text3);font-family:var(--mono);align-self:center;}
 /* sidebar scrollable */
 .sidebar{overflow-y:auto;}
@@ -533,7 +533,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0.4 Teste</div>
+      <div>Versão 1.0.2 Teste</div>
     </div>
   </div>
   </div>
@@ -747,15 +747,8 @@ table.dre td.col-total{
   <div class="page-header">
     <div><div class="page-title">Score & Alertas</div><div class="page-sub">Eficiência operacional por veículo — custo, consumo e rentabilidade</div></div>
   </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center;" id="sc-yr-pills"></div>
   <div class="alert-bar" id="sc-alerts"></div>
-  <div class="filter-bar" style="margin-bottom:16px;">
-    <div class="filter-group">
-      <span class="filter-label">Ano</span>
-      <select id="sc-yr" onchange="renderScore()">
-        <option value="">Acumulado</option>
-      </select>
-    </div>
-  </div>
   <!-- KPIs resumo frota -->
   <div class="kpi-grid" style="margin-bottom:16px;">
     <div class="kpi-card green"><div class="kpi-label">Total KM rodado</div><div class="kpi-value green" id="sc-tot-km">—</div></div>
@@ -802,6 +795,7 @@ table.dre td.col-total{
 
 <div id="p-compravenda" class="page">
   <div class="page-header"><div><div class="page-title">Compras x Vendas</div><div class="page-sub">Aquisições e desinvestimentos de veículos</div></div></div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;" id="cv-yr-pills"></div>
   <div class="kpi-grid">
     <div class="kpi-card red"><div class="kpi-label">Total Compras (2015–2026)</div><div class="kpi-value red" id="cv-tot-cmp">—</div></div>
     <div class="kpi-card green"><div class="kpi-label">Total Vendas (2015–2026)</div><div class="kpi-value green" id="cv-tot-vnd">—</div></div>
@@ -836,6 +830,7 @@ table.dre td.col-total{
 <!-- RENTABILIDADE -->
 <div id="p-rent" class="page">
   <div class="page-header"><div><div class="page-title">Rentabilidades</div><div class="page-sub">Exclui: Consolidado, Dist. Lucro, Imobilizado, Verificar</div></div></div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;" id="rent-yr-pills"></div>
   <div class="kpi-grid">
     <div class="kpi-card green"><div class="kpi-label">Acumulado 2015–2025</div><div class="kpi-value green" id="r7-tot">—</div></div>
     <div class="kpi-card green"><div class="kpi-label">Melhor ano</div><div class="kpi-value green" id="r7-best">—</div></div>
@@ -965,6 +960,17 @@ async function loadData(){
     CC  = _D.CC;  CAT = _D.CAT;  TIPO= _D.TIPO;
     MO  = _D.MO;  DRV = _D.DRV;  R   = _D.R;
     OP_CCS = CC.filter(c=>!EXCL_CC.has(c));
+    // Injetar data do JSON em todos os page-sub de todas as telas
+    if(payload.meta && payload.meta.gerado){
+      const partes=payload.meta.gerado.split(' ')[0].split('-');
+      const dataFmt=partes[2]+'/'+partes[1]+'/'+partes[0];
+      document.querySelectorAll('.page-sub').forEach(el=>{
+        if(!el.id&&!el.dataset.nodate){
+          el.dataset.origText=el.dataset.origText||el.innerHTML;
+          el.innerHTML=el.dataset.origText+' <em style="font-size:10px;color:var(--text3);font-weight:400;"> · Dados atualizados em: '+dataFmt+'</em>';
+        }
+      });
+    }
     return true;
   }catch(err){
     console.error('Erro carregando dados.json:', err);
@@ -1611,9 +1617,26 @@ function initFilters(){
 // RENDER OVERVIEW — 100% dinâmico, calcula tudo a partir de _D
 // ═══════════════════════════════════════════════════
 function renderOverview(){
+  initFiltro({filtroId:'overview', wrapId:'ov-yr-pills', usarDP:false, onApply:renderOverview});
   const byTY=STATIC.byTipoYear;
-  const anosAtivos=_ovYrs.size>0?ANOS12.filter(y=>_ovYrs.has(y)):ANOS12;
-  function somaFiltrada(t){return anosAtivos.reduce((s,y)=>s+(byTY[t]?.[y]||0),0);}
+  const fn=getFiltroFn('overview');
+  // Somar por competência (I_DC)
+  function somaFiltrada(t){
+    if(!fn) return Object.values(byTY[t]||{}).reduce((a,b)=>a+b,0);
+    const F=FILTROS.overview;
+    if(F.period==='') return (F.yrs.size>0?[...F.yrs]:ANOS12).reduce((s,y)=>s+(byTY[t]?.[y]||0),0);
+    // período: somar direto dos registros
+    let soma=0;
+    for(let i=0;i<R.length;i++){
+      const row=R[i];
+      if(TIPO[row[I_TIPO]]!==t) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(fn(mo)) soma+=row[I_VAL];
+    }
+    return soma;
+  }
+  const anosAtivos=FILTROS.overview.period===''&&FILTROS.overview.yrs.size>0?
+    ANOS12.filter(y=>FILTROS.overview.yrs.has(y)):ANOS12;
   function somaTotal(t){return Object.values(byTY[t]||{}).reduce((a,b)=>a+b,0);}
   const REC_RAW=somaFiltrada('Receita'),DESP_RAW=somaFiltrada('Despesa');
   const DIST_RAW=somaFiltrada('Distribuição Lucro'),JUR_RAW=somaFiltrada('Juros');
@@ -1646,14 +1669,17 @@ function renderOverview(){
   // Gráfico mensal: 1 ano = meses daquele ano; 2+ anos = meses de todos juntos; nenhum = ano atual
   const g2M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const g2V=Array(12).fill(0);
-  const anosParaMensal=_ovYrs.size>0?[..._ovYrs].sort():[];
-  const prefixosMensal=anosParaMensal.length>0?anosParaMensal:[String(anoAtual)];
+  const fnOv=getFiltroFn('overview');
+  const Fov=FILTROS.overview;
+  // Mensal: se filtro ativo usa ele; senão usa ano atual
+  const fnMensal=fnOv||(mo=>mo.startsWith(String(anoAtual)));
   for(let k=0;k<R.length;k++){const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
-    if(!prefixosMensal.some(a=>mo.startsWith(a)))continue;
+    if(!fnMensal(mo))continue;
     if(ti==='Receita'||ti==='Despesa')g2V[parseInt(mo.slice(5,7))-1]+=row[I_VAL];}
-  const tituloMensal=_ovYrs.size===0?'Ano atual ('+anoAtual+')':
-    _ovYrs.size===1?'Meses de '+[..._ovYrs][0]:
-    'Meses acumulados — '+[..._ovYrs].sort().join(', ');
+  const tituloMensal=Fov.period?'Últ. '+Fov.period.replace('ult','')+'m':
+    Fov.yrs.size===0?'Ano atual ('+anoAtual+')':
+    Fov.yrs.size===1?'Meses de '+[...Fov.yrs][0]:
+    'Meses acumulados — '+[...Fov.yrs].sort().join(', ');
   mkChart('ch-lucro-mensal',{type:'bar',data:{labels:g2M,datasets:[{label:'Lucro',
     data:g2V.map(v=>Math.round(v*100)/100),
     backgroundColor:g2V.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
@@ -1749,14 +1775,16 @@ function renderCashflow(){
 
   // Coletar todos os meses pagos com tipos válidos
   const moSet=new Set();
-  const cfMoFiltro=getMosPeriod(_cfYrPeriod,_cfYrs);
+  // Fluxo de Caixa usa DATA DE PAGAMENTO (I_DP)
+  initFiltro({filtroId:'cashflow', wrapId:'cf-yr-pills', usarDP:true, onApply:renderCashflow});
+  const fnCf=getFiltroFn('cashflow');
   for(let i=0;i<R.length;i++){
     const row=R[i];
     if(row[I_DP]===-1) continue;
     if(!CF_TIPOS_OK.has(TIPO[row[I_TIPO]])) continue;
-    const mo=MO[row[I_DP]]||'';
+    const mo=MO[row[I_DP]]||''; // DATA DE PAGAMENTO
     if(mo<'2015-01') continue;
-    if(cfMoFiltro&&!cfMoFiltro(mo)) continue;
+    if(fnCf&&!fnCf(mo)) continue;
     moSet.add(mo);
   }
   const allMo=[...moSet].sort();
@@ -1875,11 +1903,8 @@ function renderCashflow(){
 // RENDER RANKING
 // ═══════════════════════════════════════════════════
 function renderRanking(){
-  const yrs=_rankYrs; // Set; empty=all
-  // Período especial: ult6/ult12
-  const now=new Date();
-  const mesAtual=now.getFullYear()*12+now.getMonth();
-  // Incluir CONSOLIDADO + veículos operacionais
+  initFiltro({filtroId:'ranking', wrapId:'rank-yr-pills', usarDP:false, onApply:renderRanking});
+  const fnRank=getFiltroFn('ranking');
   const allCCs=[...new Set([...OP_CCS,'CONSOLIDADO'])];
   const ccVals=allCCs.map(cc=>{
     let rec=0,cost=0,km=0;
@@ -1888,11 +1913,7 @@ function renderRanking(){
       const row=R[i];
       if(CC[row[I_CC]]!==cc) continue;
       const mo=MO[row[I_DC]]||'';
-      if(_rankPeriod==='ult12'||_rankPeriod==='ult6'||_rankPeriod==='ult3'){
-        const n=parseInt(_rankPeriod.replace('ult',''));
-        const [y,m]=mo.split('-').map(Number);
-        if((y*12+m-1)<mesAtual-n) continue;
-      } else if(yrs.size>0 && !yrs.has(mo.slice(0,4))) continue;
+      if(fnRank&&!fnRank(mo)) continue;
       const tipo=TIPO[row[I_TIPO]];
       const val=row[I_VAL];
       if(tipo==='Receita'){rec+=val;if(Math.abs(val)>0.01)mesesComMov.add(mo);}
@@ -1951,8 +1972,8 @@ function renderRanking(){
 // RENDER SCORE
 // ═══════════════════════════════════════════════════
 function renderScore(){
-  const scYrSel=document.getElementById('sc-yr');
-  const scYr=scYrSel?scYrSel.value:'';
+  initFiltro({filtroId:'score', wrapId:'sc-yr-pills', usarDP:false, onApply:renderScore});
+  const fnScore=getFiltroFn('score');
   const isDark=!document.body.classList.contains('light');
   const gCS=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tCS=isDark?'#5a7090':'#6a8090';
@@ -1964,7 +1985,7 @@ function renderScore(){
       if(CC[row[I_CC]]!==cc) continue;
       const tipo=TIPO[row[I_TIPO]];
       const mo=MO[row[I_DC]]||'';
-      if(scYr && mo.slice(0,4)!==scYr) continue;
+      if(fnScore&&!fnScore(mo)) continue;
       if(tipo==='Receita'){rec+=row[I_VAL];months.add(mo);}
       else if(tipo==='Despesa') cost+=row[I_VAL];
       if(row[I_KM]>0) km+=row[I_KM];
@@ -2103,12 +2124,8 @@ function renderScore(){
 function renderSimple(prefix, tipoName){
   // Init filter for Distribuição Lucro
   if(tipoName==='Distribuição Lucro'){
-    createPeriodFilter({
-      wrapId:'luc-filter-pills',
-      yrsSet:_lucYrs,
-      periodVar:'_lucPeriod',
-      onApply:()=>renderSimple('a6','Distribuição Lucro')
-    });
+    initFiltro({filtroId:'lucro', wrapId:'luc-filter-pills', usarDP:false,
+      onApply:()=>renderSimple('a6','Distribuição Lucro')});
   }
   const byYr={};
   ANOS12.forEach(y=>byYr[y]=0);
@@ -2147,11 +2164,12 @@ function renderSimple(prefix, tipoName){
   const anoAtualStr = String(new Date().getFullYear());
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const moVals = [0,0,0,0,0,0,0,0,0,0,0,0];
-  const moFiltro=tipoName==='Distribuição Lucro'?getMosPeriod(_lucPeriod,_lucYrs):null;
+  const Fluc=tipoName==='Distribuição Lucro'?FILTROS.lucro:null;
+  const moFiltro=tipoName==='Distribuição Lucro'?getFiltroFn('lucro'):null;
   const anoLabel=tipoName==='Distribuição Lucro'?
-    (_lucPeriod?'Últ. '+_lucPeriod.replace('ult','')+'m':
-     _lucYrs.size===1?'Meses de '+[..._lucYrs][0]:
-     _lucYrs.size>1?'Acumulado '+[..._lucYrs].sort().join('+'):
+    (Fluc&&Fluc.period?'Últ. '+Fluc.period.replace('ult','')+'m':
+     Fluc&&Fluc.yrs.size===1?'Meses de '+[...Fluc.yrs][0]:
+     Fluc&&Fluc.yrs.size>1?'Acumulado '+[...Fluc.yrs].sort().join('+'):
      'Ano atual ('+anoAtualStr+')')
     :'';
   const elLucLabel=document.getElementById('luc-mo-label');
@@ -2189,6 +2207,8 @@ function renderSimple(prefix, tipoName){
 // RENDER RENTABILIDADE
 // ═══════════════════════════════════════════════════
 function renderRent(){
+  initFiltro({filtroId:'rent', wrapId:'rent-yr-pills', usarDP:false, onApply:renderRent});
+  const fnRent=getFiltroFn('rent');
   const ryVals=ANOS12.slice(0,-1).map(y=>STATIC.rentByYear[y]||0);
   const r2026mo=['01','02','03','04','05','06','07','08','09','10','11'].map(m=>{
     let v=0;
@@ -2358,8 +2378,7 @@ function exportDRE(){
 // RANKING YEAR FILTER INIT
 // ═══════════════════════════════════════════════════
 function initRankingFilter(){
-  initRankingPills();
-  initRankingPeriodPills();
+  // Substituído por initFiltro em renderRanking
 }
 
 
@@ -2481,28 +2500,27 @@ function renderCtrl(){
 // RESULTADO FINANCEIRO (Receitas + Despesas + Juros)
 // ═══════════════════════════════════════════════════
 function renderAnalise(){
-  initAnFilter();
+  initFiltro({filtroId:'analise', wrapId:'an-yr-pills', usarDP:false, onApply:renderAnalise});
+  const fnAn=getFiltroFn('analise');
+  const Fan=FILTROS.analise;
   const byTY=STATIC.byTipoYear;
-  const anosAtivosAn=_anYrs.size>0&&!_anPeriod?ANOS12.filter(y=>_anYrs.has(y)):ANOS12;
   const recVals=ANOS12.map(y=>byTY['Receita']?.[y]||0);
   const despVals=ANOS12.map(y=>Math.abs(byTY['Despesa']?.[y]||0));
   const jurVals=ANOS12.map(y=>byTY['Juros']?.[y]||0);
-  // Totals: se período ativo, calcular da fonte
   let totRec=0,totDesp=0,totJur=0;
-  const anMoFiltroTot=getMosPeriod(_anPeriod,_anYrs);
-  if(anMoFiltroTot){
+  if(fnAn){
     for(let i=0;i<R.length;i++){
       const row=R[i];const mo=MO[row[I_DC]]||'';
-      if(!anMoFiltroTot(mo))continue;
+      if(!fnAn(mo))continue;
       const tipo=TIPO[row[I_TIPO]],v=row[I_VAL];
       if(tipo==='Receita')totRec+=v;
       else if(tipo==='Despesa')totDesp+=Math.abs(v);
       else if(tipo==='Juros')totJur+=v;
     }
   } else {
-    totRec=anosAtivosAn.reduce((s,y)=>s+(byTY['Receita']?.[y]||0),0);
-    totDesp=anosAtivosAn.reduce((s,y)=>s+Math.abs(byTY['Despesa']?.[y]||0),0);
-    totJur=anosAtivosAn.reduce((s,y)=>s+(byTY['Juros']?.[y]||0),0);
+    totRec=recVals.reduce((a,b)=>a+b,0);
+    totDesp=despVals.reduce((a,b)=>a+b,0);
+    totJur=jurVals.reduce((a,b)=>a+b,0);
   }
   setText('an-rec',fmtBR(totRec));
   setText('an-desp',fmtBR(totDesp));
@@ -2531,12 +2549,11 @@ function renderAnalise(){
 
   // Gráfico mensal — dinâmico por seleção
   const anoAtualStr=String(new Date().getFullYear());
-  const anMoFiltro=getMosPeriod(_anPeriod,_anYrs);
-  const prefixosAn=!anMoFiltro?[anoAtualStr]:null; // null = usar moFiltro
-  const lblAno=_anPeriod?'Últ. '+_anPeriod.replace('ult','')+'m':
-    _anYrs.size===0?'Ano atual ('+anoAtualStr+')':
-    _anYrs.size===1?'Meses de '+[..._anYrs][0]:
-    'Acumulado '+[..._anYrs].sort().join('+');
+  const prefixosAn=fnAn?null:[anoAtualStr];
+  const lblAno=Fan.period?'Últ. '+Fan.period.replace('ult','')+'m':
+    Fan.yrs.size===0?'Ano atual ('+anoAtualStr+')':
+    Fan.yrs.size===1?'Meses de '+[...Fan.yrs][0]:
+    'Acumulado '+[...Fan.yrs].sort().join('+');
   const elLbl=document.getElementById('an-ano-label');
   if(elLbl) elLbl.textContent=lblAno;
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2544,7 +2561,7 @@ function renderAnalise(){
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const mo=MO[row[I_DC]]||'';
-    if(anMoFiltro){if(!anMoFiltro(mo))continue;}
+    if(fnAn){if(!fnAn(mo))continue;}
     else if(!prefixosAn.some(a=>mo.startsWith(a))) continue;
     const mIdx=parseInt(mo.slice(5,7),10)-1;
     if(mIdx<0||mIdx>11) continue;
@@ -2572,11 +2589,27 @@ function renderAnalise(){
 // ═══════════════════════════════════════════════════
 let _cvAnoSel=null;
 function renderCompraVenda(){
+  initFiltro({filtroId:'compravenda', wrapId:'cv-yr-pills', usarDP:false, onApply:renderCompraVenda});
+  const fnCV=getFiltroFn('compravenda');
+  const Fcv=FILTROS.compravenda;
   const byTY=STATIC.byTipoYear;
+  // Totais respeitando filtro
+  function somaCV(tipo){
+    if(!fnCV) return Math.abs(Object.values(byTY[tipo]||{}).reduce((a,b)=>a+b,0));
+    let s=0;
+    for(let i=0;i<R.length;i++){
+      const row=R[i];
+      if(TIPO[row[I_TIPO]]!==tipo) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(!fnCV(mo)) continue;
+      s+=Math.abs(row[I_VAL]);
+    }
+    return s;
+  }
   const cmpVals=ANOS12.map(y=>Math.abs(byTY['Compra de Veículo']?.[y]||0));
   const vndVals=ANOS12.map(y=>byTY['Venda De Veículo']?.[y]||0);
-  setText('cv-tot-cmp',fmtBR(cmpVals.reduce((a,b)=>a+b,0)));
-  setText('cv-tot-vnd',fmtBR(vndVals.reduce((a,b)=>a+b,0)));
+  setText('cv-tot-cmp',fmtBR(somaCV('Compra de Veículo')));
+  setText('cv-tot-vnd',fmtBR(somaCV('Venda De Veículo')));
 
   const isDark=!document.body.classList.contains('light');
   const gCV=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
@@ -2778,45 +2811,58 @@ function syncRoePills(){
 function renderROE(){
   if(!window._PAT){loadPatrimonio().then(renderROE);return;}
   const DATA=window._PAT;
-  // Init year pills once
+  // Init year pills usando anos do patrimônio.json
   const yrWrap=document.getElementById('roe-yr-pills');
-  if(yrWrap&&yrWrap.children.length===0){
-    // Todos
+  if(yrWrap&&!yrWrap.dataset.init){
+    yrWrap.dataset.init='1';
+    const Froe=FILTROS.roe;
+    function syncRoeLocal(){
+      yrWrap.querySelectorAll('.yr-pill').forEach(p=>{
+        p.classList.remove('yr-all','yr-sel');
+        const pd=p.dataset.pd,yr=p.dataset.yr;
+        if(!pd&&!yr){if(Froe.yrs.size===0&&!Froe.period)p.classList.add('yr-all');}
+        else if(pd){if(Froe.period===pd)p.classList.add('yr-all');}
+        else if(yr){if(Froe.yrs.has(yr)&&!Froe.period)p.classList.add('yr-sel');}
+      });
+    }
     const allP=document.createElement('div');
     allP.className='yr-pill yr-all';allP.textContent='Todos';
-    allP.onclick=()=>{_roeYrs.clear();_roePeriod='';syncRoePills();renderROE();};
+    allP.onclick=()=>{Froe.yrs.clear();Froe.period='';syncRoeLocal();renderROE();};
     yrWrap.appendChild(allP);
-    // Períodos
-    [['ult3','Últ. 3m'],['ult6','Últ. 6m'],['ult12','Últ. 12m']].forEach(([pd,lbl])=>{
-      const p=document.createElement('div');p.className='yr-pill';p.textContent=lbl;p.dataset.pd=pd;
-      p.onclick=()=>{_roeYrs.clear();_roePeriod=pd;syncRoePills();renderROE();};
-      yrWrap.appendChild(p);
-    });
-    // Anos
     const anos=[...new Set(DATA.historico.map(r=>r.ano))].sort();
     anos.forEach(yr=>{
-      const p=document.createElement('div');p.className='yr-pill';p.textContent=yr;p.dataset.yr=yr;
+      const p=document.createElement('div');p.className='yr-pill';p.textContent=yr;p.dataset.yr=String(yr);
       p.onclick=(e)=>{
-        _roePeriod='';
-        if(e.ctrlKey||e.metaKey){if(_roeYrs.has(yr))_roeYrs.delete(yr);else _roeYrs.add(yr);}
-        else{_roeYrs.clear();_roeYrs.add(yr);}
-        syncRoePills();renderROE();
+        Froe.period='';
+        const yrS=String(yr);
+        if(e.ctrlKey||e.metaKey){if(Froe.yrs.has(yrS))Froe.yrs.delete(yrS);else Froe.yrs.add(yrS);}
+        else{Froe.yrs.clear();Froe.yrs.add(yrS);}
+        syncRoeLocal();renderROE();
       };
       yrWrap.appendChild(p);
     });
-    syncRoePills();
+    [['ult3','Últ. 3m'],['ult6','Últ. 6m'],['ult12','Últ. 12m']].forEach(([pd,lbl])=>{
+      const p=document.createElement('div');p.className='yr-pill';p.textContent=lbl;p.dataset.pd=pd;
+      p.onclick=()=>{Froe.yrs.clear();Froe.period=pd;syncRoeLocal();renderROE();};
+      yrWrap.appendChild(p);
+    });
+    syncRoeLocal();
   }
   // Populate placa select once - REMOVED, auto-filter by period
   const placaSelVal='todas'; // always show all placas with data in period
 
   // Filter rows
-  const now=new Date();const mesAtual=now.getFullYear()*12+now.getMonth()+1;
+  const Froe2=FILTROS.roe;
+  const now=new Date();
+  const anoAtualRoe=now.getFullYear(),mesAtualRoe=now.getMonth()+1;
   let rows=[...DATA.historico];
-  if(_roePeriod){
-    const n=parseInt(_roePeriod.replace('ult',''));
-    rows=rows.filter(r=>(r.ano*12+12)>(mesAtual-n));
-  } else if(_roeYrs.size>0){
-    rows=rows.filter(r=>_roeYrs.has(String(r.ano)));
+  if(Froe2.period){
+    const n=parseInt(Froe2.period.replace('ult',''));
+    const limSeq=anoAtualRoe*12+mesAtualRoe-n;
+    // ROE é anual — incluir anos que têm pelo menos 1 mês no período
+    rows=rows.filter(r=>(r.ano*12+12)>limSeq);
+  } else if(Froe2.yrs.size>0){
+    rows=rows.filter(r=>Froe2.yrs.has(String(r.ano)));
   }
   if(placaSelVal!=='todas') rows=rows.filter(r=>r.placa===placaSelVal);
 
@@ -2869,10 +2915,10 @@ function renderROE(){
   });
 
   // Ranking ROE
-  const label=_roePeriod?'Últ. '+_roePeriod.replace('ult','')+'m':
-    _roeYrs.size===0?'Todos os anos':
-    _roeYrs.size===1?'Ano '+[..._roeYrs][0]:
-    'Anos '+[..._roeYrs].sort().join(', ');
+  const label=Froe2.period?'Últ. '+Froe2.period.replace('ult','')+'m':
+    Froe2.yrs.size===0?'Todos os anos':
+    Froe2.yrs.size===1?'Ano '+[...Froe2.yrs][0]:
+    'Anos '+[...Froe2.yrs].sort().join(', ');
   const rankTitle=document.getElementById('roe-rank-title');
   if(rankTitle) rankTitle.textContent='Ranking ROE — '+label;
   const ranking=Object.entries(porPlaca).map(([placa,dados])=>{
@@ -2909,6 +2955,138 @@ async function loadPatrimonio(){
     window._PAT={meta:{aviso:'Arquivo patrimônio.json não encontrado.',referencia_valores:'—'},sociedade:[],historico:[]};
     return window._PAT;
   }
+}
+
+// ═══════════════════════════════════════════════════
+// FILTRO PERÍODO — componente unificado
+// Selecionado=azul · Hover=verde · Normal=cinza
+// ═══════════════════════════════════════════════════
+
+// Estado global de cada filtro: { yrs: Set, period: '' | 'ult3' | 'ult6' | 'ult12' }
+// Cada tela tem o seu próprio objeto de estado
+const FILTROS = {
+  overview:     { yrs: new Set(), period: '' },
+  cashflow:     { yrs: new Set(), period: '' },
+  ranking:      { yrs: new Set(), period: '' },
+  analise:      { yrs: new Set(), period: '' },
+  compravenda:  { yrs: new Set(), period: '' },
+  lucro:        { yrs: new Set(), period: '' },
+  rent:         { yrs: new Set(), period: '' },
+  score:        { yrs: new Set(), period: '' },
+  roe:          { yrs: new Set(), period: '' },
+};
+
+// Retorna os anos que têm movimento (para pills dinâmicas)
+function getAnosComMovimento(usarDP=false){
+  const campo=usarDP?I_DP:I_DC;
+  const anos=new Set();
+  for(let i=0;i<R.length;i++){
+    const idx=R[i][campo];
+    if(idx===-1||idx>=MO.length) continue;
+    const yr=(MO[idx]||'').slice(0,4);
+    if(yr>='2015') anos.add(yr);
+  }
+  return [...anos].sort();
+}
+
+// Cria o filtro de período num container
+// config: { filtroId, wrapId, usarDP, onApply }
+function initFiltro(config){
+  const { filtroId, wrapId, usarDP=false, onApply } = config;
+  const wrap = document.getElementById(wrapId);
+  if(!wrap) return;
+  if(wrap.dataset.init) return; // já inicializado
+  wrap.dataset.init='1';
+
+  const F = FILTROS[filtroId];
+  const anos = getAnosComMovimento(usarDP);
+
+  function syncPills(){
+    wrap.querySelectorAll('.yr-pill').forEach(p=>{
+      p.classList.remove('yr-all','yr-sel');
+      const pd=p.dataset.pd, yr=p.dataset.yr;
+      if(pd){
+        if(F.period===pd) p.classList.add('yr-all');
+      } else if(yr===''){
+        if(F.yrs.size===0 && F.period==='') p.classList.add('yr-all');
+      } else {
+        if(F.yrs.has(yr) && F.period==='') p.classList.add('yr-sel');
+      }
+    });
+  }
+
+  function selectPeriod(pd){
+    F.yrs.clear(); F.period=pd;
+    syncPills(); onApply();
+  }
+  function selectAno(yr, multi){
+    F.period='';
+    if(multi){ if(F.yrs.has(yr)) F.yrs.delete(yr); else F.yrs.add(yr); }
+    else { F.yrs.clear(); F.yrs.add(yr); }
+    syncPills(); onApply();
+  }
+  function selectTodos(){
+    F.yrs.clear(); F.period='';
+    syncPills(); onApply();
+  }
+
+  wrap.innerHTML='';
+  // Todos
+  const pAll=document.createElement('div');
+  pAll.className='yr-pill yr-all'; pAll.textContent='Todos'; pAll.dataset.yr='';
+  pAll.onclick=selectTodos;
+  wrap.appendChild(pAll);
+  // Anos
+  anos.forEach(yr=>{
+    const p=document.createElement('div');
+    p.className='yr-pill'; p.textContent=yr; p.dataset.yr=yr;
+    p.onclick=(e)=>selectAno(yr, e.ctrlKey||e.metaKey);
+    wrap.appendChild(p);
+  });
+  // Períodos
+  [['ult3','Últ. 3m'],['ult6','Últ. 6m'],['ult12','Últ. 12m']].forEach(([pd,lbl])=>{
+    const p=document.createElement('div');
+    p.className='yr-pill'; p.textContent=lbl; p.dataset.pd=pd;
+    p.onclick=()=>selectPeriod(pd);
+    wrap.appendChild(p);
+  });
+  syncPills();
+}
+
+// Retorna função de teste para um mês 'YYYY-MM' dado o estado do filtro
+// usarDP: false=competência, true=pagamento (só Fluxo de Caixa)
+function getFiltroFn(filtroId){
+  const F=FILTROS[filtroId];
+  if(F.period===''){
+    if(F.yrs.size===0) return null; // todos — sem filtro
+    return (mo)=>F.yrs.has(mo.slice(0,4));
+  }
+  // Período: calcular limite
+  const n=parseInt(F.period.replace('ult',''));
+  const now=new Date();
+  // Mês atual: ex abril/2026 = "2026-04"
+  const anoAtual=now.getFullYear();
+  const mesAtual=now.getMonth()+1; // 1-12
+  // Limite inferior: (anoAtual*12 + mesAtual - n) = primeiro mês incluído
+  const limSeq=anoAtual*12+mesAtual-n; // exclusive
+  return (mo)=>{
+    const [y,m]=mo.split('-').map(Number);
+    return (y*12+m)>limSeq;
+  };
+}
+
+// Reset filtro (para goHome)
+function resetFiltro(filtroId){
+  const F=FILTROS[filtroId];
+  F.yrs.clear(); F.period='';
+  // Limpar dataset.init para re-renderizar pills
+  const wrapMap={
+    overview:'ov-yr-pills', cashflow:'cf-yr-pills', ranking:'rank-yr-pills',
+    analise:'an-yr-pills', compravenda:'cv-yr-pills', lucro:'luc-filter-pills',
+    rent:'rent-yr-pills', score:'sc-yr-pills', roe:'roe-yr-pills'
+  };
+  const wrap=document.getElementById(wrapMap[filtroId]);
+  if(wrap){ wrap.dataset.init=''; wrap.innerHTML=''; }
 }
 
 // ═══════════════════════════════════════════════════

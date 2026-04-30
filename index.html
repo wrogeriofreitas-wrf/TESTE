@@ -492,9 +492,9 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Dashboard</div>
     <div class="nav-items">
       <div class="nav-item active" onclick="nav('p-overview',this)"><span class="nav-icon">◈</span>Visão Geral</div>
-      <div class="nav-item" onclick="nav('p-cashflow',this)"><span class="nav-icon">⇄</span>Fluxo de Caixa</div>
+      <div class="nav-item" onclick="nav('p-cashflow',this)"><span class="nav-icon">⇄</span><span style="text-decoration:underline;text-underline-offset:3px;">Fluxo de Caixa</span></div>
       <div class="nav-item" onclick="nav('p-ranking',this)"><span class="nav-icon">▲</span>Ranking Veículos</div>
-      <div class="nav-item" onclick="nav('p-score',this)"><span class="nav-icon">◎</span>Score & Alertas</div>
+      <div class="nav-item" onclick="nav('p-score',this)"><span class="nav-icon">◎</span><span style="text-decoration:underline;text-underline-offset:3px;">Score & Alertas</span></div>
     </div>
   </div>
   <div class="nav-group">
@@ -784,12 +784,12 @@ table.dre td.col-total{
     <div class="kpi-card amber"><div class="kpi-label">Total Juros</div><div class="kpi-value amber" id="an-jur">—</div></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="margin-bottom:14px">Receitas × Despesas × Juros por ano</div>
-    <div class="chart-wrap" style="height:300px"><canvas id="ch-analise-yr" role="img" aria-label="Resultado financeiro anual"></canvas></div>
+    <div class="chart-title" style="margin-bottom:14px">Resultado Financeiro — Mês a Mês</div>
+    <div class="chart-wrap" style="height:240px"><canvas id="ch-analise-mo" role="img" aria-label="Resultado financeiro mensal"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="margin-bottom:14px">Resultado Financeiro — mês a mês (<span id="an-ano-label">2026</span>)</div>
-    <div class="chart-wrap" style="height:240px"><canvas id="ch-analise-mo" role="img" aria-label="Resultado financeiro mensal"></canvas></div>
+    <div class="chart-title" style="margin-bottom:14px">Resultado Financeiro — Ano a Ano</div>
+    <div class="chart-wrap" style="height:300px"><canvas id="ch-analise-yr" role="img" aria-label="Resultado financeiro anual"></canvas></div>
   </div>
 </div>
 
@@ -2606,8 +2606,7 @@ function renderAnalise(){
     Fan.yrs.size===0?'Ano atual ('+anoAtualStr+')':
     Fan.yrs.size===1?'Meses de '+[...Fan.yrs][0]:
     'Acumulado '+[...Fan.yrs].sort().join('+');
-  const elLbl=document.getElementById('an-ano-label');
-  if(elLbl) elLbl.textContent=lblAno;
+  // Label removido do HTML — título fixo no card
   const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const moRec=Array(12).fill(0),moDesp=Array(12).fill(0),moJur=Array(12).fill(0);
   for(let i=0;i<R.length;i++){
@@ -2624,9 +2623,9 @@ function renderAnalise(){
   }
   mkChart('ch-analise-mo',{type:'bar',
     data:{labels:meses,datasets:[
-      {label:'Receitas',data:moRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
-      {label:'Despesas',data:moDesp.map(v=>Math.abs(v)),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
-      {label:'Juros',data:moJur.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3},
+      {label:'Receitas',data:moRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
+      {label:'Despesas',data:moDesp.map(v=>Math.abs(v)),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
+      {label:'Juros',data:moJur.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},

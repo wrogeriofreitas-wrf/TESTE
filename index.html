@@ -3109,21 +3109,27 @@ function initFiltro(config){
 // usarDP: false=competência, true=pagamento (só Fluxo de Caixa)
 function getFiltroFn(filtroId){
   const F=FILTROS[filtroId];
-  if(F.period===''){
-    if(F.yrs.size===0) return null; // todos — sem filtro
-    return (mo)=>F.yrs.has(mo.slice(0,4));
-  }
-  // Período: calcular limite
-  const n=parseInt(F.period.replace('ult',''));
   const now=new Date();
-  // Mês atual: ex abril/2026 = "2026-04"
   const anoAtual=now.getFullYear();
   const mesAtual=now.getMonth()+1; // 1-12
-  // Limite inferior: (anoAtual*12 + mesAtual - n) = primeiro mês incluído
-  const limSeq=anoAtual*12+mesAtual-n; // exclusive
+  const limSup=anoAtual*12+mesAtual; // limite superior = mês atual (inclusive)
+
+  if(F.period===''){
+    if(F.yrs.size===0) return null; // todos — sem filtro
+    // Ano selecionado: meses daquele ano até no máximo o mês atual
+    return (mo)=>{
+      if(!F.yrs.has(mo.slice(0,4))) return false;
+      const [y,m]=mo.split('-').map(Number);
+      return (y*12+m)<=limSup; // não passa do mês atual
+    };
+  }
+  // Período: limite inferior e superior
+  const n=parseInt(F.period.replace('ult',''));
+  const limInf=anoAtual*12+mesAtual-n; // exclusive
   return (mo)=>{
     const [y,m]=mo.split('-').map(Number);
-    return (y*12+m)>limSeq;
+    const seq=y*12+m;
+    return seq>limInf && seq<=limSup; // entre limite inferior e mês atual
   };
 }
 

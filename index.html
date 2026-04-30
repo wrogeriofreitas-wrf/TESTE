@@ -2731,9 +2731,22 @@ function renderCompraVendaMensal(){
       }
     });
   } else {
-    for(let m=1;m<=mesAtualCV;m++){
-      moSeqCV.push(anoAtualCV+'-'+(m<10?'0':'')+m);
+    // Todos — usar todos os anos com movimento de Compra ou Venda
+    const anosComMov=new Set();
+    for(let i=0;i<R.length;i++){
+      const row=R[i];
+      const tipo=TIPO[row[I_TIPO]];
+      if(tipo!=='Compra de Veículo'&&tipo!=='Venda De Veículo') continue;
+      if(Math.abs(row[I_VAL])<0.01) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(mo) anosComMov.add(mo.slice(0,4));
     }
+    [...anosComMov].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        if(yr===String(anoAtualCV)&&m>mesAtualCV) break;
+        moSeqCV.push(yr+'-'+(m<10?'0':'')+m);
+      }
+    });
   }
 
   const mesNomesCV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -2748,16 +2761,21 @@ function renderCompraVendaMensal(){
     else if(tipo==='Venda De Veículo') moVnd[mo]+=row[I_VAL];
   }
 
-  const anosSeqCV=[...new Set(moSeqCV.map(mo=>mo.slice(0,4)))];
-  const labelsCV=moSeqCV.map(mo=>{
+  // Filtrar apenas meses com movimento
+  const moSeqFiltrado=moSeqCV.filter(mo=>(moCmp[mo]||0)+(moVnd[mo]||0)>0.01);
+  // Se não tiver nenhum, mostrar sequência completa mesmo assim
+  const moFinal=moSeqFiltrado.length>0?moSeqFiltrado:moSeqCV;
+
+  const anosSeqCV=[...new Set(moFinal.map(mo=>mo.slice(0,4)))];
+  const labelsCV=moFinal.map(mo=>{
     const [y,m]=mo.split('-');
     return anosSeqCV.length===1?mesNomesCV[parseInt(m)-1]:mesNomesCV[parseInt(m)-1]+'/'+y.slice(2);
   });
 
   mkChart('ch-cv-mo',{type:'bar',
     data:{labels:labelsCV,datasets:[
-      {label:'Compras',data:moSeqCV.map(mo=>moCmp[mo]),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
-      {label:'Vendas',data:moSeqCV.map(mo=>moVnd[mo]),backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
+      {label:'Compras',data:moFinal.map(mo=>moCmp[mo]),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
+      {label:'Vendas',data:moFinal.map(mo=>moVnd[mo]),backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCV,font:{size:11},boxWidth:12}},

@@ -2599,43 +2599,67 @@ function renderAnalise(){
         x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
     }});
 
-  // Gráfico mensal — dinâmico por seleção
+  // Gráfico mensal — sequência dinâmica igual à Visão Geral
   const anoAtualStr=String(new Date().getFullYear());
-  const prefixosAn=fnAn?null:[anoAtualStr];
-  const lblAno=Fan.period?'Últ. '+Fan.period.replace('ult','')+'m':
-    Fan.yrs.size===0?'Ano atual ('+anoAtualStr+')':
-    Fan.yrs.size===1?'Meses de '+[...Fan.yrs][0]:
-    'Acumulado '+[...Fan.yrs].sort().join('+');
-  // Label removido do HTML — título fixo no card
-  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const moRec=Array(12).fill(0),moDesp=Array(12).fill(0),moJur=Array(12).fill(0);
+  const mesAtualNumAn=new Date().getMonth()+1;
+
+  // Montar lista de meses YYYY-MM do período
+  let moSeqAn=[];
+  if(Fan.period){
+    const n=parseInt(Fan.period.replace('ult',''));
+    for(let i=n-1;i>=0;i--){
+      const d=new Date(new Date().getFullYear(),new Date().getMonth()-i,1);
+      const y=d.getFullYear(),m=d.getMonth()+1;
+      moSeqAn.push(y+'-'+(m<10?'0':'')+m);
+    }
+  } else if(Fan.yrs.size>0){
+    [...Fan.yrs].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        if(yr===anoAtualStr&&m>mesAtualNumAn) break;
+        moSeqAn.push(yr+'-'+(m<10?'0':'')+m);
+      }
+    });
+  } else {
+    for(let m=1;m<=mesAtualNumAn;m++){
+      moSeqAn.push(anoAtualStr+'-'+(m<10?'0':'')+m);
+    }
+  }
+
+  // Calcular valores por mês na sequência
+  const mesNomesAn=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const moRecV={},moDespV={},moJurV={};
+  moSeqAn.forEach(mo=>{moRecV[mo]=0;moDespV[mo]=0;moJurV[mo]=0;});
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const mo=MO[row[I_DC]]||'';
-    if(fnAn){if(!fnAn(mo))continue;}
-    else if(!prefixosAn.some(a=>mo.startsWith(a))) continue;
-    const mIdx=parseInt(mo.slice(5,7),10)-1;
-    if(mIdx<0||mIdx>11) continue;
-    const tipo=TIPO[row[I_TIPO]];
-    if(tipo==='Receita') moRec[mIdx]+=row[I_VAL];
-    else if(tipo==='Despesa') moDesp[mIdx]+=row[I_VAL];
-    else if(tipo==='Juros') moJur[mIdx]+=row[I_VAL];
+    if(!(mo in moRecV)) continue;
+    const tipo=TIPO[row[I_TIPO]],v=row[I_VAL];
+    if(tipo==='Receita') moRecV[mo]+=v;
+    else if(tipo==='Despesa') moDespV[mo]+=v;
+    else if(tipo==='Juros') moJurV[mo]+=v;
   }
-  // Calcular largura ideal das barras para preencher o gráfico
-  const nLabels=meses.length;
-  const maxBar=nLabels<=3?80:nLabels<=6?60:nLabels<=12?40:24;
+
+  // Labels: só mês se 1 ano, mês/AA se múltiplos anos
+  const anosSeqAn=[...new Set(moSeqAn.map(mo=>mo.slice(0,4)))];
+  const labelsAn=moSeqAn.map(mo=>{
+    const [y,m]=mo.split('-');
+    return anosSeqAn.length===1?mesNomesAn[parseInt(m)-1]:mesNomesAn[parseInt(m)-1]+'/'+y.slice(2);
+  });
+  const dataRec=moSeqAn.map(mo=>Math.round((moRecV[mo]||0)*100)/100);
+  const dataDesp=moSeqAn.map(mo=>Math.round(Math.abs(moDespV[mo]||0)*100)/100);
+  const dataJur=moSeqAn.map(mo=>Math.round(Math.abs(moJurV[mo]||0)*100)/100);
+
   mkChart('ch-analise-mo',{type:'bar',
-    data:{labels:meses,datasets:[
-      {label:'Receitas',data:moRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,maxBarThickness:maxBar},
-      {label:'Despesas',data:moDesp.map(v=>Math.abs(v)),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,maxBarThickness:maxBar},
-      {label:'Juros',data:moJur.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3,maxBarThickness:maxBar},
+    data:{labels:labelsAn,datasets:[
+      {label:'Receitas',data:dataRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
+      {label:'Despesas',data:dataDesp,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
+      {label:'Juros',data:dataJur,backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
       scales:{y:{grid:{color:gCA},ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false},
-          offset:true}}
+        x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
     }});
 }
 

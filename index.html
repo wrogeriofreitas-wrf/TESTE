@@ -631,9 +631,9 @@ table.dre td.col-total{
       <div class="chart-header">
         <div>
           <div class="chart-title">Lucro Operacional Mensal
-            <span style="font-size:10px;font-weight:400;color:var(--amber);font-family:var(--mono);margin-left:6px;">⚠ Resultado Prévio</span>
+            <span id="ov-previo-tag" style="font-size:10px;font-weight:400;color:var(--amber);font-family:var(--mono);margin-left:6px;display:none;">⚠ Resultado Prévio</span>
           </div>
-          <div class="chart-sub">2026 · mês a mês · ano em andamento</div>
+          <div class="chart-sub">Mês a mês · de acordo com a seleção</div>
         </div>
       </div>
       <div class="chart-wrap" style="height:260px">
@@ -1719,12 +1719,15 @@ function renderOverview(){
       : mesNomes[parseInt(m)-1]+'/'+y.slice(2);
   });
 
-  // Verificar se algum ano selecionado é o atual (resultado prévio)
-  const temAnoAtual=moSeq.some(mo=>mo.startsWith(anoAtualStr));
+  // Alerta resultado prévio: só se o ano atual estiver no período selecionado
   const alertasOv2=[];
   if(LUCRO_OP<0) alertasOv2.push(['danger','⚠ Resultado operacional negativo!']);
-  if(temAnoAtual&&(Fov.yrs.size>0||Fov.period)) alertasOv2.push(['warn','⚠ Resultado prévio — ano '+anoAtualStr+' ainda não encerrado.']);
+  const temAnoAtual=moSeq.some(mo=>mo.startsWith(anoAtualStr));
+  if(temAnoAtual) alertasOv2.push(['warn','⚠ Resultado prévio — '+anoAtualStr+' ainda não encerrado.']);
   renderAlerts('ov-alerts',alertasOv2);
+  // Tag "Resultado Prévio" no título do gráfico — só quando ano atual está no período
+  const previoTag=document.getElementById('ov-previo-tag');
+  if(previoTag) previoTag.style.display=temAnoAtual?'inline':'none';
 
   const tituloMensal=Fov.period?'Últ. '+Fov.period.replace('ult','')+'m':
     Fov.yrs.size===0?'Ano atual ('+anoAtual+')':

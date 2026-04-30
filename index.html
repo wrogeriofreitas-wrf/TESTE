@@ -630,7 +630,7 @@ table.dre td.col-total{
     <div class="chart-card half">
       <div class="chart-header">
         <div>
-          <div class="chart-title">Lucro Operacional Mensal (Ano Atual)
+          <div class="chart-title">Lucro Operacional Mensal
             <span style="font-size:10px;font-weight:400;color:var(--amber);font-family:var(--mono);margin-left:6px;">⚠ Resultado Prévio</span>
           </div>
           <div class="chart-sub">2026 · mês a mês · ano em andamento</div>
@@ -1648,15 +1648,14 @@ function renderOverview(){
   if(lucEl){lucEl.textContent=fmtBR(LUCRO_OP);lucEl.className='kpi-value '+(LUCRO_OP>=0?'green':'red');}
   setText('kpi-mar',MARGEM_OP.toFixed(2).replace('.',',')+' %');
   setText('kpi-distluc',fmtBR(Math.abs(DIST_RAW)));
-  renderAlerts('ov-alerts',LUCRO_OP<0?[['danger','⚠ Resultado operacional negativo!']]:[]); 
   const isDark=!document.body.classList.contains('light');
   const gC=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tC=isDark?'#5a7090':'#6a8090';
   const lblC=isDark?'#e2e8f0':'#1a2740';
   const anoAtual=new Date().getFullYear();
   const recA=byTY['Receita']||{},despA=byTY['Despesa']||{};
-  // Gráfico anual: anos ativos (excluir ano atual se filtro = todos)
-  const g1Anos=_ovYrs.size>0?anosAtivos:ANOS12.filter(y=>parseInt(y)<anoAtual);
+  // Gráfico anual: SEMPRE estático — todos os anos incluindo atual, não muda com filtro
+  const g1Anos=ANOS12; // inclui ano atual
   const g1Vals=g1Anos.map(y=>(recA[y]||0)+(despA[y]||0));
   mkChart('ch-lucro-anual',{type:'bar',data:{labels:g1Anos,datasets:[{label:'Lucro',data:g1Vals,
     backgroundColor:g1Vals.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
@@ -1666,29 +1665,79 @@ function renderOverview(){
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
-  // Gráfico mensal: 1 ano = meses daquele ano; 2+ anos = meses de todos juntos; nenhum = ano atual
-  const g2M=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const g2V=Array(12).fill(0);
-  const fnOv=getFiltroFn('overview');
+
+  // Gráfico mensal: sequência de meses conforme seleção
   const Fov=FILTROS.overview;
-  // Mensal: se filtro ativo usa ele; senão usa ano atual
-  const fnMensal=fnOv||(mo=>mo.startsWith(String(anoAtual)));
-  for(let k=0;k<R.length;k++){const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
-    if(!fnMensal(mo))continue;
-    if(ti==='Receita'||ti==='Despesa')g2V[parseInt(mo.slice(5,7))-1]+=row[I_VAL];}
+  const fnOv=getFiltroFn('overview');
+  const mesNomes=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const anoAtualStr=String(anoAtual);
+  const mesAtualNum=new Date().getMonth()+1; // 1-12
+
+  // Montar lista ordenada de meses YYYY-MM a exibir
+  let moSeq=[];
+  if(Fov.period){
+    // Últ. Nm: mês atual + N-1 anteriores em sequência
+    const n=parseInt(Fov.period.replace('ult',''));
+    for(let i=n-1;i>=0;i--){
+      const d=new Date(anoAtual,mesAtualNum-1-i,1);
+      const y=d.getFullYear(),m=d.getMonth()+1;
+      moSeq.push(y+'-'+(m<10?'0':'')+m);
+    }
+  } else if(Fov.yrs.size>0){
+    // Anos selecionados: todos os meses desses anos em sequência
+    [...Fov.yrs].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        const mo=yr+'-'+(m<10?'0':'')+m;
+        // Se for ano atual, só até o mês atual
+        if(yr===anoAtualStr && m>mesAtualNum) break;
+        moSeq.push(mo);
+      }
+    });
+  } else {
+    // Todos: meses do ano atual até o mês atual
+    for(let m=1;m<=mesAtualNum;m++){
+      moSeq.push(anoAtualStr+'-'+(m<10?'0':'')+m);
+    }
+  }
+
+  // Calcular valores por mês
+  const moVals={};
+  moSeq.forEach(mo=>{moVals[mo]=0;});
+  for(let k=0;k<R.length;k++){
+    const row=R[k];const ti=TIPO[row[I_TIPO]];const mo=MO[row[I_DC]]||'';
+    if(!(mo in moVals))continue;
+    if(ti==='Receita'||ti==='Despesa') moVals[mo]+=row[I_VAL];
+  }
+  const g2V=moSeq.map(mo=>Math.round((moVals[mo]||0)*100)/100);
+
+  // Labels: se sequência tem apenas 1 ano, mostrar só mês; senão MMM/AA
+  const anosSelecionados=[...new Set(moSeq.map(mo=>mo.slice(0,4)))];
+  const g2Labels=moSeq.map(mo=>{
+    const [y,m]=mo.split('-');
+    return anosSelecionados.length===1
+      ? mesNomes[parseInt(m)-1]
+      : mesNomes[parseInt(m)-1]+'/'+y.slice(2);
+  });
+
+  // Verificar se algum ano selecionado é o atual (resultado prévio)
+  const temAnoAtual=moSeq.some(mo=>mo.startsWith(anoAtualStr));
+  const alertasOv2=[];
+  if(LUCRO_OP<0) alertasOv2.push(['danger','⚠ Resultado operacional negativo!']);
+  if(temAnoAtual&&(Fov.yrs.size>0||Fov.period)) alertasOv2.push(['warn','⚠ Resultado prévio — ano '+anoAtualStr+' ainda não encerrado.']);
+  renderAlerts('ov-alerts',alertasOv2);
+
   const tituloMensal=Fov.period?'Últ. '+Fov.period.replace('ult','')+'m':
     Fov.yrs.size===0?'Ano atual ('+anoAtual+')':
-    Fov.yrs.size===1?'Meses de '+[...Fov.yrs][0]:
-    'Meses acumulados — '+[...Fov.yrs].sort().join(', ');
-  mkChart('ch-lucro-mensal',{type:'bar',data:{labels:g2M,datasets:[{label:'Lucro',
-    data:g2V.map(v=>Math.round(v*100)/100),
+    [...Fov.yrs].sort().join(' + ');
+  mkChart('ch-lucro-mensal',{type:'bar',data:{labels:g2Labels,datasets:[{label:'Lucro',
+    data:g2V,
     backgroundColor:g2V.map(v=>v>=0?'rgba(16,217,160,0.78)':'rgba(240,82,82,0.78)'),borderWidth:0,borderRadius:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
       tooltip:{callbacks:{label:c=>fmtBR(c.parsed.y)}},
-      title:{display:true,text:tituloMensal+' · Total: '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
+      title:{display:true,text:'Lucro Operacional Mensal — '+tituloMensal+' · Total: '+fmtBR(g2V.reduce((a,b)=>a+b,0)),
         color:lblC,font:{size:11,family:"'IBM Plex Mono',monospace"},padding:{bottom:4}}},
       scales:{y:{grid:{color:gC},ticks:{callback:v=>fmtK(v),color:tC,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tC,font:{size:10},autoSkip:false}}}}});
+        x:{grid:{display:false},ticks:{color:tC,font:{size:9},autoSkip:false,maxRotation:45}}}}});
   // Rosca: filtrada por anos ativos
   const rT=[{label:'Receita',val:Math.abs(REC_RAW),color:'#10d9a0'},
     {label:'Despesa',val:Math.abs(DESP_RAW),color:'#f05252'},

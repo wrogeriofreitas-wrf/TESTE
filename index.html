@@ -801,18 +801,12 @@ table.dre td.col-total{
     <div class="kpi-card green"><div class="kpi-label">Total Vendas (2015–2026)</div><div class="kpi-value green" id="cv-tot-vnd">—</div></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="margin-bottom:14px">Compras × Vendas por ano — clique no ano para ver detalhes mensais</div>
-    <div class="chart-wrap" style="height:280px"><canvas id="ch-cv-yr" role="img" aria-label="Compras e vendas anuais"></canvas></div>
-  </div>
-  <div id="cv-ano-cards" style="display:none;margin-bottom:8px;">
-    <div class="kpi-grid">
-      <div class="kpi-card red"><div class="kpi-label" id="cv-card-cmp-label">Compras</div><div class="kpi-value red" id="cv-card-cmp">—</div></div>
-      <div class="kpi-card green"><div class="kpi-label" id="cv-card-vnd-label">Vendas</div><div class="kpi-value green" id="cv-card-vnd">—</div></div>
-    </div>
+    <div class="chart-title" style="margin-bottom:14px">Compras × Vendas — Mês a Mês</div>
+    <div class="chart-wrap" style="height:220px"><canvas id="ch-cv-mo" role="img" aria-label="Compras e vendas mensais"></canvas></div>
   </div>
   <div class="chart-card">
-    <div class="chart-title" style="margin-bottom:14px">Compras × Vendas por mês — <span id="cv-ano-label">2026</span></div>
-    <div class="chart-wrap" style="height:220px"><canvas id="ch-cv-mo" role="img" aria-label="Compras e vendas mensais"></canvas></div>
+    <div class="chart-title" style="margin-bottom:14px">Compras × Vendas — Ano a Ano</div>
+    <div class="chart-wrap" style="height:280px"><canvas id="ch-cv-yr" role="img" aria-label="Compras e vendas anuais"></canvas></div>
   </div>
 </div>
 <div id="p-lucro" class="page">
@@ -2698,36 +2692,12 @@ function renderCompraVenda(){
 
   mkChart('ch-cv-yr',{type:'bar',
     data:{labels:ANOS12,datasets:[
-      {label:'Compras',data:cmpVals,backgroundColor:ANOS12.map(y=>y===_cvAnoSel?mkRGBA(RED,'0.95'):mkRGBA(RED,'0.55')),borderRadius:3},
-      {label:'Vendas',data:vndVals,backgroundColor:ANOS12.map(y=>y===_cvAnoSel?mkRGBA(GREEN,'0.95'):mkRGBA(GREEN,'0.55')),borderRadius:3},
+      {label:'Compras',data:cmpVals,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
+      {label:'Vendas',data:vndVals,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
-      onClick:(evt,el,chart)=>{
-        if(el.length>0){
-          const idx=el[0].index;
-          _cvAnoSel=ANOS12[idx];
-          // Show year cards
-          const cardsDiv=document.getElementById('cv-ano-cards');
-          if(cardsDiv) cardsDiv.style.display='block';
-          const lblCmp=document.getElementById('cv-card-cmp-label');
-          const lblVnd=document.getElementById('cv-card-vnd-label');
-          if(lblCmp) lblCmp.textContent='Compras '+_cvAnoSel;
-          if(lblVnd) lblVnd.textContent='Vendas '+_cvAnoSel;
-          const byTY2=STATIC.byTipoYear;
-          const cmpAno=Math.abs(byTY2['Compra de Veículo']?.[_cvAnoSel]||0);
-          const vndAno=byTY2['Venda De Veículo']?.[_cvAnoSel]||0;
-          const elCmp=document.getElementById('cv-card-cmp');
-          const elVnd=document.getElementById('cv-card-vnd');
-          if(elCmp) elCmp.textContent=fmtBR(cmpAno);
-          if(elVnd) elVnd.textContent=fmtBR(vndAno);
-          renderCompraVendaMensal();
-          renderCompraVenda();
-        }
-      },
       plugins:{legend:{labels:{color:tCV,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}},
-        title:{display:true,text:'Clique em um ano para ver o detalhamento mensal',
-          color:tCV,font:{size:10},padding:{bottom:2}}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
       scales:{y:{grid:{color:gCV},ticks:{callback:v=>fmtK(v),color:tCV,font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tCV,font:{size:10},autoSkip:false}}}
     }});
@@ -2739,25 +2709,55 @@ function renderCompraVendaMensal(){
   const isDark=!document.body.classList.contains('light');
   const gCV=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tCV=isDark?'#5a7090':'#6a8090';
-  const anoLabel=document.getElementById('cv-ano-label');
-  if(anoLabel) anoLabel.textContent=_cvAnoSel||'—';
-  const meses=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const moCmp=Array(12).fill(0),moVnd=Array(12).fill(0);
-  if(!_cvAnoSel) return;
+  const Fcv=FILTROS.compravenda;
+  const fnCV=getFiltroFn('compravenda');
+  const now=new Date();
+  const anoAtualCV=now.getFullYear(),mesAtualCV=now.getMonth()+1;
+
+  // Montar sequência de meses igual ao padrão dos outros gráficos
+  let moSeqCV=[];
+  if(Fcv.period){
+    const n=parseInt(Fcv.period.replace('ult',''));
+    for(let i=n-1;i>=0;i--){
+      const d=new Date(anoAtualCV,mesAtualCV-1-i,1);
+      const y=d.getFullYear(),m=d.getMonth()+1;
+      moSeqCV.push(y+'-'+(m<10?'0':'')+m);
+    }
+  } else if(Fcv.yrs.size>0){
+    [...Fcv.yrs].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        if(yr===String(anoAtualCV)&&m>mesAtualCV) break;
+        moSeqCV.push(yr+'-'+(m<10?'0':'')+m);
+      }
+    });
+  } else {
+    for(let m=1;m<=mesAtualCV;m++){
+      moSeqCV.push(anoAtualCV+'-'+(m<10?'0':'')+m);
+    }
+  }
+
+  const mesNomesCV=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const moCmp={},moVnd={};
+  moSeqCV.forEach(mo=>{moCmp[mo]=0;moVnd[mo]=0;});
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const mo=MO[row[I_DC]]||'';
-    if(!mo.startsWith(_cvAnoSel)) continue;
-    const mIdx=parseInt(mo.slice(5,7),10)-1;
-    if(mIdx<0||mIdx>11) continue;
+    if(!(mo in moCmp)) continue;
     const tipo=TIPO[row[I_TIPO]];
-    if(tipo==='Compra de Veículo') moCmp[mIdx]+=Math.abs(row[I_VAL]);
-    else if(tipo==='Venda De Veículo') moVnd[mIdx]+=row[I_VAL];
+    if(tipo==='Compra de Veículo') moCmp[mo]+=Math.abs(row[I_VAL]);
+    else if(tipo==='Venda De Veículo') moVnd[mo]+=row[I_VAL];
   }
+
+  const anosSeqCV=[...new Set(moSeqCV.map(mo=>mo.slice(0,4)))];
+  const labelsCV=moSeqCV.map(mo=>{
+    const [y,m]=mo.split('-');
+    return anosSeqCV.length===1?mesNomesCV[parseInt(m)-1]:mesNomesCV[parseInt(m)-1]+'/'+y.slice(2);
+  });
+
   mkChart('ch-cv-mo',{type:'bar',
-    data:{labels:meses,datasets:[
-      {label:'Compras',data:moCmp,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
-      {label:'Vendas',data:moVnd,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
+    data:{labels:labelsCV,datasets:[
+      {label:'Compras',data:moSeqCV.map(mo=>moCmp[mo]),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
+      {label:'Vendas',data:moSeqCV.map(mo=>moVnd[mo]),backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCV,font:{size:11},boxWidth:12}},

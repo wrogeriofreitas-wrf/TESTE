@@ -2621,17 +2621,21 @@ function renderAnalise(){
     else if(tipo==='Despesa') moDesp[mIdx]+=row[I_VAL];
     else if(tipo==='Juros') moJur[mIdx]+=row[I_VAL];
   }
+  // Calcular largura ideal das barras para preencher o gráfico
+  const nLabels=meses.length;
+  const maxBar=nLabels<=3?80:nLabels<=6?60:nLabels<=12?40:24;
   mkChart('ch-analise-mo',{type:'bar',
     data:{labels:meses,datasets:[
-      {label:'Receitas',data:moRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
-      {label:'Despesas',data:moDesp.map(v=>Math.abs(v)),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
-      {label:'Juros',data:moJur.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3,barPercentage:0.9,categoryPercentage:0.9},
+      {label:'Receitas',data:moRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,maxBarThickness:maxBar},
+      {label:'Despesas',data:moDesp.map(v=>Math.abs(v)),backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,maxBarThickness:maxBar},
+      {label:'Juros',data:moJur.map(v=>Math.abs(v)),backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3,maxBarThickness:maxBar},
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
       scales:{y:{grid:{color:gCA},ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
+        x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false},
+          offset:true}}
     }});
 }
 

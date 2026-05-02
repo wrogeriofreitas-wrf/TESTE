@@ -745,25 +745,28 @@ table.dre td.col-total{
 ════════════════════════════════ -->
 <div id="p-score" class="page">
   <div class="page-header">
-    <div><div class="page-title">Score & Alertas</div><div class="page-sub">Eficiência operacional por veículo — custo, consumo e rentabilidade</div></div>
+    <div><div class="page-title">Score & Alertas</div><div class="page-sub">Score Operacional de Frota — SOF 2.0</div></div>
   </div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;align-items:center;" id="sc-yr-pills"></div>
   <div class="alert-bar" id="sc-alerts"></div>
-  <!-- KPIs resumo frota -->
+  <!-- 6 cards de destaque da frota -->
   <div class="kpi-grid" style="margin-bottom:16px;">
-    <div class="kpi-card green"><div class="kpi-label">Total KM rodado</div><div class="kpi-value green" id="sc-tot-km">—</div></div>
-    <div class="kpi-card amber"><div class="kpi-label">Custo médio /km</div><div class="kpi-value amber" id="sc-avg-cpkm">—</div></div>
-    <div class="kpi-card blue"><div class="kpi-label">Receita média /km</div><div class="kpi-value blue" id="sc-avg-rpkm">—</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Consumo médio</div><div class="kpi-value green" id="sc-avg-kml">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">🏆 Melhor km/l</div><div class="kpi-value green" id="sc-best-kml">—</div><div class="kpi-delta" id="sc-best-kml-placa">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">⚠ Pior km/l</div><div class="kpi-value red" id="sc-worst-kml">—</div><div class="kpi-delta" id="sc-worst-kml-placa">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">💰 Maior receita/km</div><div class="kpi-value green" id="sc-best-rpkm">—</div><div class="kpi-delta" id="sc-best-rpkm-placa">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">📉 Menor receita/km</div><div class="kpi-value red" id="sc-worst-rpkm">—</div><div class="kpi-delta" id="sc-worst-rpkm-placa">—</div></div>
+    <div class="kpi-card green"><div class="kpi-label">✅ Menor custo/km</div><div class="kpi-value green" id="sc-best-cpkm">—</div><div class="kpi-delta" id="sc-best-cpkm-placa">—</div></div>
+    <div class="kpi-card red"><div class="kpi-label">❌ Maior custo/km</div><div class="kpi-value red" id="sc-worst-cpkm">—</div><div class="kpi-delta" id="sc-worst-cpkm-placa">—</div></div>
   </div>
+  <!-- Cards por veículo -->
   <div class="score-grid" id="score-grid"></div>
   <!-- Gráficos comparativos -->
   <div class="chart-card" style="margin-top:16px;">
-    <div class="chart-header"><div><div class="chart-title">Custo por KM por veículo (R$/km)</div><div class="chart-sub">Menor valor = mais eficiente. Barras verdes = abaixo da média da frota.</div></div></div>
+    <div class="chart-header"><div><div class="chart-title">Custo por KM por veículo (R$/km)</div><div class="chart-sub">Verde = abaixo da média · Vermelho = acima da média</div></div></div>
     <div class="chart-wrap" style="height:260px"><canvas id="ch-cpkm" role="img" aria-label="Custo por km"></canvas></div>
   </div>
   <div class="chart-card" style="margin-top:16px;">
-    <div class="chart-header"><div><div class="chart-title">Consumo (km/litro) por veículo</div><div class="chart-sub">Maior valor = mais econômico. Barras verdes = acima da média da frota.</div></div></div>
+    <div class="chart-header"><div><div class="chart-title">Consumo (km/litro) por veículo</div><div class="chart-sub">Verde = acima da média · Vermelho = abaixo da média</div></div></div>
     <div class="chart-wrap" style="height:260px"><canvas id="ch-kml" role="img" aria-label="Consumo km/litro"></canvas></div>
   </div>
   <div class="chart-card" style="margin-top:16px;">
@@ -902,6 +905,13 @@ table.dre td.col-total{
   <div>
     <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border);" id="roe-rank-title">Ranking ROE</div>
     <div id="roe-ranking"></div>
+  </div>
+  <div style="margin-top:28px;">
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+      Análise de Decisão — Manter ou Vender?
+      <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:8px;">ROE vs Depreciação real · baseado no histórico de valores</span>
+    </div>
+    <div id="roe-decisao-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:14px;"></div>
   </div>
 </div>
 
@@ -2023,143 +2033,314 @@ function renderScore(){
   const isDark=!document.body.classList.contains('light');
   const gCS=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tCS=isDark?'#5a7090':'#6a8090';
+  const now=new Date();
+  const anoAtualSc=now.getFullYear(), mesAtualSc=now.getMonth()+1;
 
-  const ccVals=OP_CCS.map(cc=>{
-    let rec=0,cost=0,km=0,lts=0,months=new Set();
+  // ── Calcular métricas por placa ─────────────────────────
+  const ccData=OP_CCS.map(cc=>{
+    let rec=0,despVeic=0,comissao=0,ajuda=0,lts=0;
+    let kmMin=Infinity,kmMax=-Infinity;
+    const mesesMov=new Set();
+    // Dados mensais para sazonalidade e tendência
+    const porMes={};
+
     for(let i=0;i<R.length;i++){
       const row=R[i];
       if(CC[row[I_CC]]!==cc) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(!mo) continue;
+      if(fnScore&&!fnScore(mo)) continue;
       const tipo=TIPO[row[I_TIPO]];
+      const cat=CAT[row[I_CAT]]||'';
+      const val=row[I_VAL];
+      const km=row[I_KM]||0;
+      const lt=row[I_LTS]||0;
+
+      if(tipo==='Receita'){
+        rec+=val;
+        if(Math.abs(val)>0.01) mesesMov.add(mo);
+        if(!porMes[mo]) porMes[mo]={rec:0,desp:0};
+        porMes[mo].rec+=val;
+      } else if(tipo==='Despesa'){
+        if(cat==='COMISSÃO') comissao+=Math.abs(val);
+        else if(cat==='AJUDA DE CUSTO') ajuda+=Math.abs(val);
+        else despVeic+=Math.abs(val);
+        if(Math.abs(val)>0.01) mesesMov.add(mo);
+        if(!porMes[mo]) porMes[mo]={rec:0,desp:0};
+        porMes[mo].desp+=Math.abs(val);
+      }
+      if(km>0){ if(km<kmMin)kmMin=km; if(km>kmMax)kmMax=km; }
+      if(lt>0) lts+=lt;
+    }
+
+    const kmRodado=kmMax>kmMin&&kmMin!==Infinity?kmMax-kmMin:0;
+    const temCombustivel=lts>0;
+    const kml=temCombustivel&&kmRodado>0?kmRodado/lts:0;
+    const cpkm=kmRodado>0?despVeic/kmRodado:0;
+    const rpkm=kmRodado>0?rec/kmRodado:0;
+    const luc=rec-despVeic-comissao-ajuda;
+    const margem=rec>0?((rec-despVeic-comissao-ajuda)/rec)*100:0;
+    const nMeses=mesesMov.size;
+
+    // Preço médio litro (lançamentos COMBUSTIVEL com LTS>0)
+    let totalPagoCombustivel=0, totalLtsComValor=0;
+    for(let i=0;i<R.length;i++){
+      const row=R[i];
+      if(CC[row[I_CC]]!==cc) continue;
       const mo=MO[row[I_DC]]||'';
       if(fnScore&&!fnScore(mo)) continue;
-      if(tipo==='Receita'){rec+=row[I_VAL];months.add(mo);}
-      else if(tipo==='Despesa') cost+=row[I_VAL];
-      if(row[I_KM]>0) km+=row[I_KM];
-      if(row[I_LTS]>0) lts+=row[I_LTS];
+      const cat=CAT[row[I_CAT]]||'';
+      if(cat==='COMBUSTIVEL'&&row[I_LTS]>0&&Math.abs(row[I_VAL])>0){
+        totalPagoCombustivel+=Math.abs(row[I_VAL]);
+        totalLtsComValor+=row[I_LTS];
+      }
     }
-    const luc=rec+cost;
-    const margin=rec>0?(luc/rec)*100:0;
-    // Custo por KM (R$ por km)
-    const cpkm=km>0?Math.abs(cost)/km:0;
-    // Receita por KM
-    const rpkm=km>0?rec/km:0;
-    // KM por litro
-    const kml=lts>0?km/lts:0;
-    // Score operacional:
-    // 30pts: margem (>20%=30, linear)
-    // 30pts: cpkm baixo (referência R$3,50/km = 0pts, R$0 = 30pts)
-    // 25pts: kml alto (referência 2km/l=0, 5km/l=25pts)
-    // 15pts: consistência meses (>20 meses = 15pts)
-    let score=0;
-    score+=Math.min(30, margin>0?Math.min(30,margin*1.5):0);
-    score+=Math.min(30, cpkm>0?Math.max(0,30-(cpkm/3.5)*30):0);
-    score+=Math.min(25, kml>0?Math.min(25,(kml/5)*25):0);
-    score+=Math.min(15, months.size>20?15:(months.size/20)*15);
-    score=Math.round(score);
-    const grade=score>=75?'A':score>=55?'B':score>=35?'C':'D';
-    return {cc,rec,cost,luc,margin,cpkm,rpkm,kml,km,lts,months:months.size,score,grade};
-  }).filter(c=>c.km>0||Math.abs(c.rec)>0.01).sort((a,b)=>b.score-a.score);
+    const precoLitro=totalLtsComValor>0?totalPagoCombustivel/totalLtsComValor:0;
 
-  // KPIs frota
-  const totKm=ccVals.reduce((s,c)=>s+c.km,0);
-  const avgCpkm=ccVals.filter(c=>c.cpkm>0).reduce((s,c)=>s+c.cpkm,0)/(ccVals.filter(c=>c.cpkm>0).length||1);
-  const avgRpkm=ccVals.filter(c=>c.rpkm>0).reduce((s,c)=>s+c.rpkm,0)/(ccVals.filter(c=>c.rpkm>0).length||1);
-  const avgKml=ccVals.filter(c=>c.kml>0).reduce((s,c)=>s+c.kml,0)/(ccVals.filter(c=>c.kml>0).length||1);
-  setText('sc-tot-km', totKm.toLocaleString('pt-BR')+' km');
-  setText('sc-avg-cpkm', 'R$ '+avgCpkm.toFixed(2).replace('.',','));
-  setText('sc-avg-rpkm', 'R$ '+avgRpkm.toFixed(2).replace('.',','));
-  setText('sc-avg-kml', avgKml.toFixed(2).replace('.',',')+' km/l');
+    // Tendência: comparar últimos 3 meses com 3 anteriores
+    const mesesOrdenados=Object.keys(porMes).sort();
+    let tendencia=0;
+    if(mesesOrdenados.length>=6){
+      const ultimos3=mesesOrdenados.slice(-3);
+      const anteriores3=mesesOrdenados.slice(-6,-3);
+      const lucUlt=ultimos3.reduce((s,m)=>s+(porMes[m].rec-porMes[m].desp),0);
+      const lucAnt=anteriores3.reduce((s,m)=>s+(porMes[m].rec-porMes[m].desp),0);
+      tendencia=lucAnt!==0?((lucUlt-lucAnt)/Math.abs(lucAnt))*100:0;
+    }
 
-  // Cards por veículo
+    // Dados mensais para mini-gráfico (últimos 12 meses)
+    const miniMeses=mesesOrdenados.slice(-12);
+    const miniVals=miniMeses.map(m=>(porMes[m].rec-porMes[m].desp));
+
+    return {cc,rec,despVeic,comissao,ajuda,luc,margem,kmRodado,kml,cpkm,rpkm,
+      nMeses,temCombustivel,precoLitro,tendencia,miniMeses,miniVals,lts};
+  }).filter(c=>Math.abs(c.rec)>0.01||c.kmRodado>0);
+
+  // ── Médias da frota ─────────────────────────────────────
+  const frota=ccData.filter(c=>c.kmRodado>0);
+  const avgCpkm=frota.length?frota.reduce((s,c)=>s+c.cpkm,0)/frota.length:0;
+  const avgRpkm=frota.length?frota.reduce((s,c)=>s+c.rpkm,0)/frota.length:0;
+  const avgKml=frota.filter(c=>c.temCombustivel).length?
+    frota.filter(c=>c.temCombustivel).reduce((s,c)=>s+c.kml,0)/frota.filter(c=>c.temCombustivel).length:0;
+
+  // ── SOF 2.0 Score ───────────────────────────────────────
+  ccData.forEach(c=>{
+    // Pilar 1: Resultado Econômico 45pts
+    // 1a. Margem líquida 25pts
+    let p1a=0;
+    if(c.margem>25)p1a=25;
+    else if(c.margem>15)p1a=20;
+    else if(c.margem>8)p1a=14;
+    else if(c.margem>0)p1a=7;
+
+    // 1b. Receita/km vs média frota 20pts
+    let p1b=0;
+    if(avgRpkm>0&&c.rpkm>0){
+      const ratioR=c.rpkm/avgRpkm;
+      if(ratioR>1.2)p1b=20;
+      else if(ratioR>1.0)p1b=16;
+      else if(ratioR>0.8)p1b=11;
+      else if(ratioR>0.6)p1b=6;
+    }
+
+    // Pilar 2: Eficiência Operacional 35pts
+    // 2a. Custo/km vs média frota 20pts (carretas: +10pts redistribuídos)
+    let p2a=0;
+    if(avgCpkm>0&&c.cpkm>0){
+      const ratioC=c.cpkm/avgCpkm;
+      if(ratioC<0.8)p2a=20;
+      else if(ratioC<0.95)p2a=16;
+      else if(ratioC<1.1)p2a=11;
+      else if(ratioC<1.3)p2a=5;
+    }
+
+    // 2b. km/l 15pts (0 para carretas, redistribuído)
+    let p2b=0;
+    if(c.temCombustivel&&c.kml>0){
+      if(c.kml>3.2)p2b=15;
+      else if(c.kml>2.5)p2b=11;
+      else if(c.kml>1.8)p2b=7;
+      else if(c.kml>1.2)p2b=3;
+    }
+
+    // Redistribuir 15pts de combustível para carretas
+    if(!c.temCombustivel){
+      p2a=Math.min(30,p2a+10); // extra 10pts em custo/km
+    }
+
+    // Pilar 3: Consistência 20pts
+    // 3a. Regularidade 10pts
+    const Fsc=FILTROS.score;
+    let mesesPeriodo=12;
+    if(Fsc.period){
+      mesesPeriodo=parseInt(Fsc.period.replace('ult',''));
+    } else if(Fsc.yrs.size>0){
+      mesesPeriodo=Fsc.yrs.size*12;
+    }
+    const p3a=Math.min(10,Math.round((c.nMeses/Math.max(mesesPeriodo,1))*10));
+
+    // 3b. Tendência 10pts
+    let p3b=7; // padrão estável
+    if(c.tendencia>10)p3b=10;
+    else if(c.tendencia>=-10)p3b=7;
+    else if(c.tendencia>=-20)p3b=4;
+    else p3b=0;
+    // Se dados insuficientes para tendência, usar regularidade dobrada
+    if(c.miniMeses.length<6) p3b=p3a;
+
+    c.score=Math.round(p1a+p1b+p2a+p2b+p3a+p3b);
+    c.grade=c.score>=90?'A+':c.score>=75?'A':c.score>=60?'B':c.score>=45?'C':c.score>=30?'D':'F';
+    c.gradeColor=c.grade==='A+'?'var(--green)':c.grade==='A'?'#10d9a0':
+      c.grade==='B'?'var(--blue)':c.grade==='C'?'var(--amber)':
+      c.grade==='D'?'#ff8c42':'var(--red)';
+  });
+
+  // ── 6 cards de destaque ──────────────────────────────────
+  const comComb=ccData.filter(c=>c.temCombustivel&&c.kml>0);
+  const comKm=ccData.filter(c=>c.kmRodado>0);
+  if(comComb.length){
+    const bestKml=comComb.reduce((a,b)=>b.kml>a.kml?b:a);
+    const worstKml=comComb.reduce((a,b)=>b.kml<a.kml?b:a);
+    setText('sc-best-kml',bestKml.kml.toFixed(2)+' km/l');
+    setText('sc-best-kml-placa',bestKml.cc);
+    setText('sc-worst-kml',worstKml.kml.toFixed(2)+' km/l');
+    setText('sc-worst-kml-placa',worstKml.cc);
+  }
+  if(comKm.length){
+    const bestRpkm=comKm.reduce((a,b)=>b.rpkm>a.rpkm?b:a);
+    const worstRpkm=comKm.reduce((a,b)=>b.rpkm<a.rpkm?b:a);
+    const bestCpkm=comKm.filter(c=>c.cpkm>0).reduce((a,b)=>b.cpkm<a.cpkm?b:a,comKm[0]);
+    const worstCpkm=comKm.reduce((a,b)=>b.cpkm>a.cpkm?b:a);
+    setText('sc-best-rpkm','R$ '+bestRpkm.rpkm.toFixed(2).replace('.',','));
+    setText('sc-best-rpkm-placa',bestRpkm.cc);
+    setText('sc-worst-rpkm','R$ '+worstRpkm.rpkm.toFixed(2).replace('.',','));
+    setText('sc-worst-rpkm-placa',worstRpkm.cc);
+    setText('sc-best-cpkm','R$ '+bestCpkm.cpkm.toFixed(2).replace('.',','));
+    setText('sc-best-cpkm-placa',bestCpkm.cc);
+    setText('sc-worst-cpkm','R$ '+worstCpkm.cpkm.toFixed(2).replace('.',','));
+    setText('sc-worst-cpkm-placa',worstCpkm.cc);
+  }
+
+  // ── Alertas automáticos ──────────────────────────────────
+  const alerts=[];
+  const prejuizo=ccData.filter(c=>c.luc<0);
+  if(prejuizo.length) alerts.push(['danger','⚠ Prejuízo operacional: '+prejuizo.map(c=>c.cc).join(', ')]);
+  const gradeF=ccData.filter(c=>c.grade==='F');
+  if(gradeF.length) alerts.push(['danger','🔴 Operação insustentável (F): '+gradeF.map(c=>c.cc).join(', ')]);
+  const altoCusto=ccData.filter(c=>c.cpkm>avgCpkm*1.3&&c.kmRodado>0);
+  if(altoCusto.length) alerts.push(['warn','⚠ Custo/km crítico (+30% da média): '+altoCusto.map(c=>c.cc).join(', ')]);
+  const baixoKml=ccData.filter(c=>c.temCombustivel&&c.kml>0&&c.kml<1.5);
+  if(baixoKml.length) alerts.push(['warn','⚠ Consumo crítico (<1,5 km/l): '+baixoKml.map(c=>c.cc).join(', ')]);
+  const tendQueda=ccData.filter(c=>c.tendencia<-20&&c.miniMeses.length>=6);
+  if(tendQueda.length) alerts.push(['warn','📉 Tendência de queda (>20%): '+tendQueda.map(c=>c.cc).join(', ')]);
+  renderAlerts('sc-alerts',alerts);
+
+  // ── Cards por veículo ────────────────────────────────────
+  ccData.sort((a,b)=>b.score-a.score);
   const grid=document.getElementById('score-grid');
   grid.innerHTML='';
-  ccVals.forEach(c=>{
-    const sc=c.grade==='A'?'var(--green)':c.grade==='B'?'var(--blue)':c.grade==='C'?'var(--amber)':'var(--red)';
-    const cpkmOk=c.cpkm>0&&c.cpkm<=avgCpkm;
-    const kmlOk=c.kml>0&&c.kml>=avgKml;
+
+  ccData.forEach(c=>{
+    const cpkmOk=avgCpkm>0&&c.cpkm>0&&c.cpkm<=avgCpkm;
+    const kmlOk=avgKml>0&&c.kml>0&&c.kml>=avgKml;
+    const tendIcon=c.tendencia>10?'↑':c.tendencia<-10?'↓':'→';
+    const tendColor=c.tendencia>10?'var(--green)':c.tendencia<-10?'var(--red)':'var(--text3)';
+
+    // Mini gráfico inline (sparkline) como barras CSS
+    const maxMini=Math.max(...c.miniVals.map(Math.abs),1);
+    const sparkHTML=c.miniVals.length>0?`
+      <div style="display:flex;align-items:flex-end;gap:1px;height:28px;margin-top:8px;">
+        ${c.miniVals.map(v=>`<div style="flex:1;height:${Math.max(2,Math.round(Math.abs(v)/maxMini*28))}px;
+          background:${v>=0?'rgba(16,217,160,0.6)':'rgba(240,82,82,0.6)'};border-radius:1px;"></div>`).join('')}
+      </div>`:'';
+
     grid.innerHTML+=`
-      <div class="score-card">
+      <div class="score-card" style="border-top:2px solid ${c.gradeColor};">
         <div class="score-top">
-          <div><div class="score-cc">${c.cc}</div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${c.km.toLocaleString('pt-BR')} km · ${c.months} meses</div></div>
-          <div class="score-badge ${c.grade}">${c.grade}</div>
+          <div>
+            <div class="score-cc">${c.cc}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">${c.kmRodado.toLocaleString('pt-BR')} km · ${c.nMeses}m</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="score-badge ${c.grade}" style="background:${c.gradeColor}22;color:${c.gradeColor};border-color:${c.gradeColor};">${c.grade}</div>
+            <div style="font-size:10px;color:${tendColor};margin-top:2px;">${tendIcon} ${Math.abs(c.tendencia).toFixed(0)}%</div>
+          </div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Custo/km</span><span style="color:${cpkmOk?'var(--green)':'var(--red)'}">R$ ${c.cpkm.toFixed(2).replace('.',',')}</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.cpkm/5*100)}%;background:${cpkmOk?'var(--green)':'var(--red)'}"></div></div>
+          <div class="score-bar-label"><span>Receita/km</span><span style="color:var(--blue);">R$ ${c.rpkm.toFixed(2).replace('.',',')}</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,avgRpkm>0?c.rpkm/avgRpkm*50:0)}%;background:var(--blue)"></div></div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>km/litro</span><span style="color:${kmlOk?'var(--green)':'var(--amber)'}">${c.kml.toFixed(2).replace('.',',')} km/l</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.kml/6*100)}%;background:${kmlOk?'var(--green)':'var(--amber)'}"></div></div>
+          <div class="score-bar-label"><span>Custo/km</span><span style="color:${cpkmOk?'var(--green)':'var(--red)'};">R$ ${c.cpkm.toFixed(2).replace('.',',')}</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,avgCpkm>0?c.cpkm/avgCpkm*50:0)}%;background:${cpkmOk?'var(--green)':'var(--red)'}"></div></div>
+        </div>
+        ${c.temCombustivel?`
+        <div class="score-bar-row">
+          <div class="score-bar-label"><span>km/litro</span><span style="color:${kmlOk?'var(--green)':'var(--amber)'};">${c.kml.toFixed(2).replace('.',',')} km/l</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,c.kml/5*100)}%;background:${kmlOk?'var(--green)':'var(--amber)'}"></div></div>
         </div>
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Margem</span><span style="color:${c.margin>0?'var(--green)':'var(--red)'}">${fmtPct(c.margin)}</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,Math.max(0,c.margin))}%;background:var(--blue)"></div></div>
-        </div>
+          <div class="score-bar-label"><span>Preço médio litro</span><span style="color:var(--text2);">R$ ${c.precoLitro.toFixed(2).replace('.',',')}</span></div>
+        </div>`:'<div style="font-size:10px;color:var(--text3);padding:4px 0;">Sem combustível (carreta)</div>'}
         <div class="score-bar-row">
-          <div class="score-bar-label"><span>Score</span><span style="color:${sc}">${c.score}/100</span></div>
-          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${c.score}%;background:${sc}"></div></div>
+          <div class="score-bar-label"><span>Margem</span><span style="color:${c.margem>0?'var(--green)':'var(--red)'};">${c.margem.toFixed(1).replace('.',',')}%</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${Math.min(100,Math.max(0,c.margem))}%;background:${c.margem>0?'var(--green)':'var(--red)'}"></div></div>
         </div>
+        <div style="margin-top:10px;padding:8px;background:var(--bg3);border-radius:6px;">
+          <div style="font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;margin-bottom:4px;">Custo do Motorista</div>
+          <div style="display:flex;gap:16px;font-size:11px;font-family:var(--mono);">
+            <span>Comissão: <span style="color:var(--amber);">${fmtBR(c.comissao)}</span></span>
+            <span>Ajuda custo: <span style="color:var(--amber);">${fmtBR(c.ajuda)}</span></span>
+          </div>
+          ${c.rec>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px;">
+            ${((c.comissao+c.ajuda)/c.rec*100).toFixed(1)}% da receita</div>`:''}
+        </div>
+        <div class="score-bar-row" style="margin-top:6px;">
+          <div class="score-bar-label"><span>Score SOF 2.0</span><span style="color:${c.gradeColor};font-weight:700;">${c.score}/100</span></div>
+          <div class="score-bar-outer"><div class="score-bar-inner" style="width:${c.score}%;background:${c.gradeColor}"></div></div>
+        </div>
+        ${sparkHTML}
       </div>`;
   });
 
-  // Alertas automáticos
-  const alerts=[];
-  const prejuizo=ccVals.filter(c=>c.luc<0);
-  if(prejuizo.length) alerts.push(['danger','⚠ Prejuízo operacional: '+prejuizo.map(c=>c.cc).join(', ')]);
-  const altoCusto=ccVals.filter(c=>c.cpkm>avgCpkm*1.3&&c.km>0);
-  if(altoCusto.length) alerts.push(['warn','⚠ Custo/km acima da média da frota (+30%): '+altoCusto.map(c=>c.cc).join(', ')]);
-  const baixoConsumo=ccVals.filter(c=>c.kml>0&&c.kml<avgKml*0.7);
-  if(baixoConsumo.length) alerts.push(['warn','⚠ Consumo abaixo da média (-30%): '+baixoConsumo.map(c=>c.cc).join(', ')]);
-  const gradeD=ccVals.filter(c=>c.grade==='D');
-  if(gradeD.length) alerts.push(['warn','⚠ Score crítico (D): '+gradeD.map(c=>c.cc).join(', ')]);
-  renderAlerts('sc-alerts',alerts);
-
-  // Gráfico custo/km
-  const cpkmSorted=[...ccVals].sort((a,b)=>a.cpkm-b.cpkm);
+  // ── Gráficos comparativos ────────────────────────────────
+  const sorted=[...ccData].sort((a,b)=>a.cpkm-b.cpkm);
   mkChart('ch-cpkm',{type:'bar',
-    data:{labels:cpkmSorted.map(c=>c.cc),datasets:[{
-      label:'R$/km',
-      data:cpkmSorted.map(c=>parseFloat(c.cpkm.toFixed(3))),
-      backgroundColor:cpkmSorted.map(c=>c.cpkm<=avgCpkm?mkRGBA(GREEN,'0.78'):mkRGBA(RED,'0.78')),
-      borderWidth:0,borderRadius:4
-    },{
-      label:'Média',type:'line',
-      data:cpkmSorted.map(()=>parseFloat(avgCpkm.toFixed(3))),
-      borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
-      borderWidth:2,borderDash:[4,4],pointRadius:0
-    }]},
+    data:{labels:sorted.map(c=>c.cc),datasets:[
+      {label:'R$/km',data:sorted.map(c=>parseFloat(c.cpkm.toFixed(3))),
+        backgroundColor:sorted.map(c=>c.cpkm<=avgCpkm?mkRGBA(GREEN,'0.78'):mkRGBA(RED,'0.78')),
+        borderWidth:0,borderRadius:4},
+      {label:'Média',type:'line',data:sorted.map(()=>parseFloat(avgCpkm.toFixed(3))),
+        borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
+        borderWidth:2,pointRadius:0}
+    ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCS,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>c.dataset.label+': R$ '+c.parsed.y.toFixed(2)}}},
       scales:{y:{grid:{color:gCS},ticks:{callback:v=>'R$ '+v.toFixed(2),color:tCS,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}
-    }});
+        x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}}});
 
-  // Gráfico km/litro
-  const kmlSorted=[...ccVals].filter(c=>c.kml>0).sort((a,b)=>b.kml-a.kml);
-  mkChart('ch-kml',{type:'bar',
-    data:{labels:kmlSorted.map(c=>c.cc),datasets:[{
-      label:'km/litro',
-      data:kmlSorted.map(c=>parseFloat(c.kml.toFixed(2))),
-      backgroundColor:kmlSorted.map(c=>c.kml>=avgKml?mkRGBA(GREEN,'0.78'):mkRGBA(AMBER,'0.78')),
-      borderWidth:0,borderRadius:4
-    },{
-      label:'Média',type:'line',
-      data:kmlSorted.map(()=>parseFloat(avgKml.toFixed(2))),
-      borderColor:mkRGBA(BLUE,'1'),backgroundColor:'transparent',
-      borderWidth:2,borderDash:[4,4],pointRadius:0
-    }]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:tCS,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(2)+' km/l'}}},
-      scales:{y:{grid:{color:gCS},ticks:{callback:v=>v.toFixed(1)+' km/l',color:tCS,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}
-    }});
+  const sortedKml=[...ccData].filter(c=>c.temCombustivel&&c.kml>0).sort((a,b)=>b.kml-a.kml);
+  if(sortedKml.length){
+    mkChart('ch-kml',{type:'bar',
+      data:{labels:sortedKml.map(c=>c.cc),datasets:[
+        {label:'km/l',data:sortedKml.map(c=>parseFloat(c.kml.toFixed(2))),
+          backgroundColor:sortedKml.map(c=>c.kml>=avgKml?mkRGBA(GREEN,'0.78'):mkRGBA(AMBER,'0.78')),
+          borderWidth:0,borderRadius:4},
+        {label:'Média',type:'line',data:sortedKml.map(()=>parseFloat(avgKml.toFixed(2))),
+          borderColor:mkRGBA(BLUE,'1'),backgroundColor:'transparent',
+          borderWidth:2,pointRadius:0}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:tCS,font:{size:11},boxWidth:12}},
+          tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y.toFixed(2)+' km/l'}}},
+        scales:{y:{grid:{color:gCS},ticks:{callback:v=>v.toFixed(1)+' km/l',color:tCS,font:{size:10}}},
+          x:{grid:{display:false},ticks:{color:tCS,font:{size:10},autoSkip:false}}}}});
+  }
 
-  // Gráfico lucro
   mkChart('ch-placa-lucro',barCfg(
-    ccVals.map(c=>c.cc),
-    ccVals.map(c=>c.luc),
+    ccData.map(c=>c.cc),
+    ccData.map(c=>c.luc),
     mkRGBA(GREEN,'0.75'),mkRGBA(RED,'0.75')
   ));
 }
@@ -3035,6 +3216,83 @@ function renderROE(){
       <div style="font-family:var(--mono);font-size:12px;min-width:72px;text-align:right;font-weight:600;color:${r.roe>=0?'var(--green)':'var(--red)'};">${(r.roe*100).toFixed(2)}%</div>
       <div style="font-size:11px;color:var(--text3);min-width:110px;text-align:right;font-family:var(--mono);color:${r.lucro>=0?'var(--green)':'var(--red)'};">${fmtBR(r.lucro)}</div>
     </div>`).join('');
+
+  // ── Análise de Decisão — Manter ou Vender ───────────────
+  renderROEDecisao(DATA);
+}
+
+function renderROEDecisao(DATA){
+  const grid=document.getElementById('roe-decisao-grid');
+  if(!grid) return;
+
+  // Agrupar histórico por placa
+  const porPlaca={};
+  DATA.historico.forEach(r=>{
+    if(!porPlaca[r.placa]) porPlaca[r.placa]=[];
+    porPlaca[r.placa].push(r);
+  });
+
+  grid.innerHTML='';
+
+  Object.entries(porPlaca).forEach(([placa,dados])=>{
+    dados.sort((a,b)=>a.ano-b.ano);
+    const comValor=dados.filter(r=>r.vlr_mercado>0);
+    if(comValor.length<2){
+      // Dados insuficientes
+      grid.innerHTML+=`
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;">
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green);">${placa}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px;">⚠ Dados insuficientes para análise de depreciação (mínimo 2 anos com valor de mercado)</div>
+        </div>`;
+      return;
+    }
+
+    // Calcular depreciação anual média
+    const taxasDeprec=[];
+    for(let i=1;i<comValor.length;i++){
+      const prev=comValor[i-1].vlr_mercado;
+      const curr=comValor[i].vlr_mercado;
+      if(prev>0) taxasDeprec.push((curr-prev)/prev*100);
+    }
+    const taxaMediaDeprec=taxasDeprec.reduce((a,b)=>a+b,0)/taxasDeprec.length;
+
+    // ROE médio dos últimos 3 anos disponíveis
+    const ultimos=dados.slice(-3).filter(r=>r.roe!==0);
+    const roeMedia=ultimos.length?ultimos.reduce((s,r)=>s+r.roe,0)/ultimos.length:0;
+
+    // Resultado líquido real = ROE médio - depreciação
+    const liquidoReal=roeMedia*100+taxaMediaDeprec; // taxaDeprec é negativa se deprecia
+
+    // Projeção próximo ano
+    const ultimoValor=comValor[comValor.length-1].vlr_mercado;
+    const projecao=ultimoValor*(1+taxaMediaDeprec/100);
+
+    // Decisão
+    let decisao, decisaoColor, decisaoIcon;
+    if(liquidoReal>5){ decisao='Manter'; decisaoColor='var(--green)'; decisaoIcon='✅'; }
+    else if(liquidoReal>0){ decisao='Avaliar'; decisaoColor='var(--amber)'; decisaoIcon='⚠️'; }
+    else { decisao='Considerar venda'; decisaoColor='var(--red)'; decisaoIcon='🔴'; }
+
+    const anoUltimoValor=comValor[comValor.length-1].ano;
+
+    grid.innerHTML+=`
+      <div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid ${decisaoColor};border-radius:var(--radius);padding:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--green);">${placa}</div>
+          <div style="font-size:11px;font-weight:700;color:${decisaoColor};">${decisaoIcon} ${decisao}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;font-family:var(--mono);">
+          <div><span style="color:var(--text3);">ROE médio</span><br><span style="color:${roeMedia>=0?'var(--green)':'var(--red)'};font-weight:600;">${(roeMedia*100).toFixed(2)}%</span></div>
+          <div><span style="color:var(--text3);">Deprec. média/ano</span><br><span style="color:${taxaMediaDeprec>=0?'var(--green)':'var(--red)'};font-weight:600;">${taxaMediaDeprec.toFixed(1)}%</span></div>
+          <div><span style="color:var(--text3);">Resultado líquido</span><br><span style="color:${liquidoReal>=0?'var(--green)':'var(--red)'};font-weight:600;">${liquidoReal.toFixed(1)}% a.a.</span></div>
+          <div><span style="color:var(--text3);">Projeção ${anoUltimoValor+1}</span><br><span style="color:var(--text2);font-weight:600;">${fmtBR(projecao)}</span></div>
+        </div>
+        <div style="margin-top:8px;font-size:10px;color:var(--text3);">
+          ${comValor.length} anos de dados · último valor: ${fmtBR(ultimoValor)} (${anoUltimoValor})
+          ${taxasDeprec.length<3?' · ⚠ Poucos dados, projeção estimada':''}
+        </div>
+      </div>`;
+  });
 }
 
 // ═══════════════════════════════════════════════════

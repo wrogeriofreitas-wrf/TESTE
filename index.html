@@ -1698,10 +1698,22 @@ function renderOverview(){
       }
     });
   } else {
-    // Todos: meses do ano atual até o mês atual
-    for(let m=1;m<=mesAtualNum;m++){
-      moSeq.push(anoAtualStr+'-'+(m<10?'0':'')+m);
+    // Todos: usar todos os anos com movimento de Receita ou Despesa
+    const anosMovOv=new Set();
+    for(let k=0;k<R.length;k++){
+      const row=R[k];
+      const tipo=TIPO[row[I_TIPO]];
+      if(tipo!=='Receita'&&tipo!=='Despesa') continue;
+      if(Math.abs(row[I_VAL])<0.01) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(mo) anosMovOv.add(mo.slice(0,4));
     }
+    [...anosMovOv].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        if(yr===anoAtualStr&&m>mesAtualNum) break;
+        moSeq.push(yr+'-'+(m<10?'0':'')+m);
+      }
+    });
   }
 
   // Calcular valores por mês
@@ -1894,16 +1906,30 @@ function renderCashflow(){
   const dataEnt=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moEntradas[mo]||0),0)*100)/100);
   const dataSai=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moSaidas[mo]||0),0)*100)/100);
 
+  // Calcular saldo (entradas - saídas) por período
+  const dataSaldo=dataEnt.map((e,i)=>Math.round((e-dataSai[i])*100)/100);
+
   mkChart('ch-cashflow',{type:'bar',
     data:{labels,datasets:[
-      {label:'Entradas',data:dataEnt,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
-      {label:'Saídas',data:dataSai,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
+      {label:'Entradas',data:dataEnt,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Saídas',data:dataSai,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Saldo',data:dataSaldo,type:'line',
+        borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
+        borderWidth:2.5,pointRadius:4,pointHoverRadius:7,
+        pointBackgroundColor:mkRGBA(AMBER,'1'),tension:0.3,
+        yAxisID:'y2',order:0}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tC2,font:{size:11},boxWidth:12}},
         tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
-      scales:{y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tC2,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:24}}}
+      scales:{
+        y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}},
+          title:{display:true,text:'Entradas / Saídas',color:tC2,font:{size:9}}},
+        y2:{position:'right',grid:{display:false},
+          ticks:{callback:v=>fmtK(v),color:'#f0b429',font:{size:10}},
+          title:{display:true,text:'Saldo',color:'#f0b429',font:{size:9}}},
+        x:{grid:{display:false},ticks:{color:tC2,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:24}}
+      }
     }});
 
   // Saldo acumulado — igual ao da Visão Geral mas cor verde
@@ -2795,9 +2821,22 @@ function renderAnalise(){
       }
     });
   } else {
-    for(let m=1;m<=mesAtualNumAn;m++){
-      moSeqAn.push(anoAtualStr+'-'+(m<10?'0':'')+m);
+    // Todos: usar todos os anos com movimento de Receita, Despesa ou Juros
+    const anosMovAn=new Set();
+    for(let k=0;k<R.length;k++){
+      const row=R[k];
+      const tipo=TIPO[row[I_TIPO]];
+      if(tipo!=='Receita'&&tipo!=='Despesa'&&tipo!=='Juros') continue;
+      if(Math.abs(row[I_VAL])<0.01) continue;
+      const mo=MO[row[I_DC]]||'';
+      if(mo) anosMovAn.add(mo.slice(0,4));
     }
+    [...anosMovAn].sort().forEach(yr=>{
+      for(let m=1;m<=12;m++){
+        if(yr===anoAtualStr&&m>mesAtualNumAn) break;
+        moSeqAn.push(yr+'-'+(m<10?'0':'')+m);
+      }
+    });
   }
 
   // Calcular valores por mês na sequência
@@ -3113,7 +3152,7 @@ function renderROE(){
       p.onclick=(e)=>{
         Froe.period='';
         const yrS=String(yr);
-        if(e.ctrlKey||e.metaKey){if(Froe.yrs.has(yrS))Froe.yrs.delete(yrS);else Froe.yrs.add(yrS);}
+        if(e.ctrlKey||e.metaKey||_isTouchDevice){if(Froe.yrs.has(yrS))Froe.yrs.delete(yrS);else Froe.yrs.add(yrS);}
         else{Froe.yrs.clear();Froe.yrs.add(yrS);}
         syncRoeLocal();renderROE();
       };
@@ -3319,6 +3358,9 @@ async function loadPatrimonio(){
 
 // Estado global de cada filtro: { yrs: Set, period: '' | 'ult3' | 'ult6' | 'ult12' }
 // Cada tela tem o seu próprio objeto de estado
+// Detectar dispositivo touch (celular/tablet)
+const _isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
 const FILTROS = {
   overview:     { yrs: new Set(), period: '' },
   cashflow:     { yrs: new Set(), period: '' },
@@ -3376,8 +3418,14 @@ function initFiltro(config){
   }
   function selectAno(yr, multi){
     F.period='';
-    if(multi){ if(F.yrs.has(yr)) F.yrs.delete(yr); else F.yrs.add(yr); }
-    else { F.yrs.clear(); F.yrs.add(yr); }
+    // Desktop com Ctrl ou celular (touch): sempre toggle multi-seleção
+    // Desktop sem Ctrl: seleciona só aquele
+    if(multi||_isTouchDevice){
+      if(F.yrs.has(yr)) F.yrs.delete(yr); else F.yrs.add(yr);
+      if(F.yrs.size===0){/* nada selecionado = mantém vazio = todos */}
+    } else {
+      F.yrs.clear(); F.yrs.add(yr);
+    }
     syncPills(); onApply();
   }
   function selectTodos(){

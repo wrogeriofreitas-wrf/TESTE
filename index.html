@@ -522,13 +522,13 @@ table.dre td.col-total{
       </div>
     </div>
   </div>
-  <div class="nav-group">
+  <div class="nav-group" id="nav-group-patrimonio">
     <div class="nav-label" onclick="toggleNav(this)">Patrimônio</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-fichas',this)"><span class="nav-icon">📋</span>Fichas dos Veículos</div>
     </div>
   </div>
-  <div class="sidebar-footer">
+  </div><!-- /nav-groups -->
     <div class="logout-btn" onclick="logout()" title="Sair do sistema">
       <span style="font-size:13px;">⎋</span> Sair
     </div>
@@ -926,13 +926,24 @@ const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7;
 
 
 let _usuarios=[];
-function tentarLogin(){
+async function sha256(texto){
+  // Converter para maiúsculas antes de hash (case-insensitive)
+  const upper=texto.toUpperCase();
+  const msgBuffer=new TextEncoder().encode(upper);
+  const hashBuffer=await crypto.subtle.digest('SHA-256',msgBuffer);
+  const hashArray=Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function tentarLogin(){
   const u=(document.getElementById('l-user').value||'').trim().toUpperCase();
-  const p=(document.getElementById('l-pass').value||'').trim().toUpperCase();
-  if(_usuarios.some(x=>x.u.toUpperCase()===u&&x.p.toUpperCase()===p)){
+  const p=(document.getElementById('l-pass').value||'').trim();
+  const pHash=await sha256(p);
+  if(_usuarios.some(x=>x.u.toUpperCase()===u&&x.p===pHash)){
     sessionStorage.setItem('dashlog_auth','1');
+    sessionStorage.setItem('dashlog_user',u);
     document.getElementById('login-overlay').remove();
     document.getElementById('login-style').remove();
+    aplicarPermissoes();
   } else {
     document.getElementById('l-err').style.display='block';
     document.getElementById('l-pass').value='';
@@ -3499,8 +3510,28 @@ function resetFiltro(filtroId){
 }
 
 // ═══════════════════════════════════════════════════
-// PREFERÊNCIAS — tema e menus (localStorage)
+// PERMISSÕES POR USUÁRIO
 // ═══════════════════════════════════════════════════
+const PERMISSOES = {
+  // grupos bloqueados por usuário (nome em maiúsculas)
+  'TESTE': ['nav-group-patrimonio'],
+  'CURY':  ['nav-group-patrimonio'],
+};
+
+function aplicarPermissoes(){
+  const user=(sessionStorage.getItem('dashlog_user')||'').toUpperCase();
+  const bloqueados=PERMISSOES[user]||[];
+  bloqueados.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display='none';
+  });
+  // Se página atual for bloqueada, redirecionar para home
+  const paginaAtual=document.querySelector('.page.active');
+  if(paginaAtual){
+    const pid=paginaAtual.id;
+    if(pid==='p-fichas'&&bloqueados.includes('nav-group-patrimonio')) goHome();
+  }
+}
 function initPrefs(){
   // Tema: padrão escuro
   const savedTheme=localStorage.getItem('dashlog_theme')||'dark';
@@ -3532,6 +3563,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   try{
     STATIC = precompute(); // agora R, CC, CAT, etc estão preenchidos
     initPrefs();
+    aplicarPermissoes();
     initFilters();
     initRankingFilter();
     initOvFilter();

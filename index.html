@@ -1195,6 +1195,9 @@ function precompute(){
     });
   });
 
+  const now=new Date();
+  const limSupStatic=now.getFullYear()*12+now.getMonth()+1; // mês atual inclusive
+
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const cc  = CC[row[I_CC]];
@@ -1205,10 +1208,13 @@ function precompute(){
     const yr  = mo.slice(0,4);
     const mes = parseInt(mo.slice(5,7))-1; // 0-indexed
 
-    if(tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
+    // Verificar se é mês futuro (além do mês atual)
+    const isFuturo = mo ? (()=>{ const [y,m]=mo.split('-').map(Number); return y*12+m>limSupStatic; })() : false;
+
+    if(!isFuturo && tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
       byTipoYear[tipo][yr]+=val;
 
-    if(!EXCL_RENT.has(cc) && mo && rentByYear[yr]!==undefined){
+    if(!isFuturo && !EXCL_RENT.has(cc) && mo && rentByYear[yr]!==undefined){
       rentByYear[yr]+=val;
       if(rentByCC[cc] && rentByCC[cc][yr]!==undefined) rentByCC[cc][yr]+=val;
     }

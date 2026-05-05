@@ -1196,7 +1196,7 @@ function precompute(){
   });
 
   const now=new Date();
-  const limSupStatic=now.getFullYear()*12+now.getMonth()+1; // mês atual inclusive
+  const limSupStatic=now.getFullYear()*12+now.getMonth()+1; // usado só no rentByYear/dreData
 
   for(let i=0;i<R.length;i++){
     const row=R[i];
@@ -1208,12 +1208,13 @@ function precompute(){
     const yr  = mo.slice(0,4);
     const mes = parseInt(mo.slice(5,7))-1; // 0-indexed
 
-    // Verificar se é mês futuro (além do mês atual)
-    const isFuturo = mo ? (()=>{ const [y,m]=mo.split('-').map(Number); return y*12+m>limSupStatic; })() : false;
-
-    if(!isFuturo && tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
+    // byTipoYear: SEM limite superior — inclui todos os lançamentos (inclusive futuros)
+    // O filtro de período é aplicado em tempo real via getFiltroFn
+    if(tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
       byTipoYear[tipo][yr]+=val;
 
+    // rentByYear e rentByCC: manter limite superior (mês atual)
+    const isFuturo = mo ? (()=>{ const [y,m]=mo.split('-').map(Number); return y*12+m>limSupStatic; })() : false;
     if(!isFuturo && !EXCL_RENT.has(cc) && mo && rentByYear[yr]!==undefined){
       rentByYear[yr]+=val;
       if(rentByCC[cc] && rentByCC[cc][yr]!==undefined) rentByCC[cc][yr]+=val;

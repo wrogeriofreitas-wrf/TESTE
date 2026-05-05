@@ -2837,7 +2837,6 @@ function renderAnalise(){
   } else if(Fan.yrs.size>0){
     [...Fan.yrs].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
-        if(yr===anoAtualStr&&m>mesAtualNumAn) break;
         moSeqAn.push(yr+'-'+(m<10?'0':'')+m);
       }
     });
@@ -2854,7 +2853,6 @@ function renderAnalise(){
     }
     [...anosMovAn].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
-        if(yr===anoAtualStr&&m>mesAtualNumAn) break;
         moSeqAn.push(yr+'-'+(m<10?'0':'')+m);
       }
     });
@@ -2967,7 +2965,6 @@ function renderCompraVendaMensal(){
   } else if(Fcv.yrs.size>0){
     [...Fcv.yrs].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
-        if(yr===String(anoAtualCV)&&m>mesAtualCV) break;
         moSeqCV.push(yr+'-'+(m<10?'0':'')+m);
       }
     });
@@ -2984,7 +2981,6 @@ function renderCompraVendaMensal(){
     }
     [...anosComMov].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
-        if(yr===String(anoAtualCV)&&m>mesAtualCV) break;
         moSeqCV.push(yr+'-'+(m<10?'0':'')+m);
       }
     });

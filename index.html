@@ -1210,8 +1210,8 @@ function precompute(){
     const yr  = mo.slice(0,4);
     const mes = parseInt(mo.slice(5,7))-1; // 0-indexed
 
-    // Verificar se é mês futuro (além do mês atual)
-    const isFuturo = mo ? (()=>{ const [y,m]=mo.split('-').map(Number); return y*12+m>limSupStatic; })() : false;
+    // byTipoYear e rentByYear: sem limite superior — mostra todos os lançamentos
+    const isFuturo = false; // sem restrição de data futura
 
     // byTipoYear: COM limite superior — exclui meses futuros
     if(!isFuturo && tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
@@ -3492,21 +3492,17 @@ function getFiltroFn(filtroId){
   const limSup=anoAtual*12+mesAtual; // limite superior = mês atual (inclusive)
 
   if(F.period===''){
-    if(F.yrs.size===0) return null; // todos — sem filtro
-    // Ano selecionado: meses daquele ano até no máximo o mês atual
-    return (mo)=>{
-      if(!F.yrs.has(mo.slice(0,4))) return false;
-      const [y,m]=mo.split('-').map(Number);
-      return (y*12+m)<=limSup; // não passa do mês atual
-    };
+    if(F.yrs.size===0) return null; // Todos — sem filtro, tudo
+    // Ano selecionado: tudo daquele ano, sem limite de mês
+    return (mo)=>F.yrs.has(mo.slice(0,4));
   }
-  // Período: limite inferior e superior
+  // Últ. 3/6/12m: limite inferior E superior (mês atual)
   const n=parseInt(F.period.replace('ult',''));
   const limInf=anoAtual*12+mesAtual-n; // exclusive
   return (mo)=>{
     const [y,m]=mo.split('-').map(Number);
     const seq=y*12+m;
-    return seq>limInf && seq<=limSup; // entre limite inferior e mês atual
+    return seq>limInf && seq<=limSup;
   };
 }
 

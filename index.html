@@ -1713,8 +1713,6 @@ function renderOverview(){
     [...Fov.yrs].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
         const mo=yr+'-'+(m<10?'0':'')+m;
-        // Se for ano atual, só até o mês atual
-        if(yr===anoAtualStr && m>mesAtualNum) break;
         moSeq.push(mo);
       }
     });

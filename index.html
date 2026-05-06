@@ -1729,7 +1729,6 @@ function renderOverview(){
     }
     [...anosMovOv].sort().forEach(yr=>{
       for(let m=1;m<=12;m++){
-        if(yr===anoAtualStr&&m>mesAtualNum) break;
         moSeq.push(yr+'-'+(m<10?'0':'')+m);
       }
     });

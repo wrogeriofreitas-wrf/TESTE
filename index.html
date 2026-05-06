@@ -3578,6 +3578,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     renderScore();
     renderCtrl();
     initChartInfo();
+    initTelaInfo();
     // Pre-load patrimônio in background
     loadPatrimonio();
   }catch(err){
@@ -3618,6 +3619,45 @@ const CHART_INFO = {
   'ch-r8':            'Resultado operacional mês a mês no ano atual. Exclui as mesmas categorias não operacionais do gráfico anual.',
   'ch-r9':            'Resultado operacional acumulado por veículo no período selecionado. Verde = rentável; vermelho = operação deficitária.',
 };
+
+const TELA_INFO = {
+  'p-overview':  'Visão resumida do resultado operacional (Receitas − Despesas) ano a ano, desde o início até o último lançamento previsto. Permite filtrar por período específico e analisar o resultado mês a mês.',
+  'p-cashflow':  '⚙ Descritivo em construção.',
+  'p-ranking':   '⚙ Descritivo em construção.',
+  'p-score':     '⚙ Descritivo em construção.',
+  'p-analise':   '⚙ Descritivo em construção.',
+  'p-compravenda': '⚙ Descritivo em construção.',
+  'p-lucro':       '⚙ Descritivo em construção.',
+  'p-rent':      '⚙ Descritivo em construção.',
+  'p-dre':       '⚙ Descritivo em construção.',
+};
+
+function initTelaInfo(){
+  Object.entries(TELA_INFO).forEach(([pid, texto])=>{
+    const page = document.getElementById(pid);
+    if(!page) return;
+    const header = page.querySelector('.page-header');
+    if(!header) return;
+    if(header.querySelector('.info-btn-tela')) return;
+
+    const btn = document.createElement('button');
+    btn.className = 'info-btn info-btn-tela';
+    btn.textContent = '? Sobre esta tela';
+
+    const panel = document.createElement('div');
+    panel.className = 'info-panel';
+    panel.style.margin = '0 0 12px 0';
+    panel.textContent = texto;
+
+    btn.addEventListener('click', ()=>{
+      panel.classList.toggle('open');
+      btn.textContent = panel.classList.contains('open') ? '✕ Fechar' : '? Sobre esta tela';
+    });
+
+    header.appendChild(btn);
+    header.insertAdjacentElement('afterend', panel);
+  });
+}
 
 function initChartInfo(){
   Object.entries(CHART_INFO).forEach(([cid, texto])=>{

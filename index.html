@@ -1933,6 +1933,10 @@ function renderCashflow(){
   const dataCmp=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moCompras[mo]||0),0)*100)/100);
   const dataVnd=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moVendas[mo]||0),0)*100)/100);
 
+  // Proporção de área: BAR_FRAC para barras (base), LINE_FRAC para linha de saldo (topo)
+  const BAR_FRAC = 3/4;  // ajuste aqui: ex. 2/3, 3/4, 1/2
+  const LINE_FRAC = 1 - BAR_FRAC;
+
   // Saldo: Entradas - Saídas - Compras + Vendas (recalcula dinamicamente ao toggler legenda)
   function calcSaldo(chart){
     const ds=chart.data.datasets;
@@ -1948,6 +1952,24 @@ function renderCashflow(){
   }
 
   const dataSaldo=dataEnt.map((_,i)=>Math.round((dataEnt[i]-dataSai[i]-dataCmp[i]+dataVnd[i])*100)/100);
+
+  // Calcular limites dos eixos para separar visualmente barras e linha
+  function calcAxesLimits(saldo){
+    const barMax=Math.max(0,...dataEnt,...dataSai,...dataCmp,...dataVnd);
+    const barMin=0;
+    // y (barras): max esticado para reservar topo para a linha
+    const yMax=barMax/BAR_FRAC;
+    const yMin=barMin;
+    // y2 (saldo): min esticado para baixo para empurrar linha ao topo
+    const sMax=Math.max(...saldo);
+    const sMin=Math.min(...saldo);
+    const sRange=Math.max(sMax-sMin,1);
+    const y2Max=sMax+sRange*0.15;
+    const y2Min=sMin-(sRange*BAR_FRAC/LINE_FRAC);
+    return{yMax,yMin,y2Max,y2Min};
+  }
+
+  const lim=calcAxesLimits(dataSaldo);
 
   mkChart('ch-cashflow',{type:'bar',
     data:{labels,datasets:[
@@ -1970,18 +1992,25 @@ function renderCashflow(){
             const idx=legendItem.datasetIndex;
             const meta=chart.getDatasetMeta(idx);
             meta.hidden=!meta.hidden;
-            // Recalcular saldo dinamicamente (não toggler o próprio Saldo)
+            // Recalcular saldo e reajustar limites dos eixos
             const saldoDs=chart.data.datasets.find(d=>d.label==='Saldo');
-            if(saldoDs) saldoDs.data=calcSaldo(chart);
+            if(saldoDs){
+              saldoDs.data=calcSaldo(chart);
+              const newLim=calcAxesLimits(saldoDs.data);
+              chart.options.scales.y.max=newLim.yMax;
+              chart.options.scales.y2.max=newLim.y2Max;
+              chart.options.scales.y2.min=newLim.y2Min;
+            }
             chart.update();
           }
         },
         tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}
       },
       scales:{
-        y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}},
+        y:{grid:{color:gC2},min:lim.yMin,max:lim.yMax,
+          ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}},
           title:{display:true,text:'Valores',color:tC2,font:{size:9}}},
-        y2:{position:'right',grid:{display:false},
+        y2:{position:'right',grid:{display:false},min:lim.y2Min,max:lim.y2Max,
           ticks:{callback:v=>fmtK(v),color:'#f0b429',font:{size:10}},
           title:{display:true,text:'Saldo',color:'#f0b429',font:{size:9}}},
         x:{grid:{display:false},ticks:{color:tC2,font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:24}}

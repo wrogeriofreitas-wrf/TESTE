@@ -218,8 +218,8 @@ body::before{
 .chart-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
 .chart-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
 .chart-title{font-size:13px;font-weight:500;color:var(--text);}
-.info-btn{font-size:10px;font-family:var(--mono);color:var(--blue);background:var(--blue2);border:1px solid var(--blue);border-radius:5px;padding:3px 9px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;line-height:1.6;}
-.info-btn:hover{background:rgba(59,158,255,0.25);}
+.info-btn{font-size:10px;font-family:var(--mono);color:#F8AB12;background:rgba(248,171,18,0.12);border:1px solid #F8AB12;border-radius:5px;padding:3px 9px;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0;line-height:1.6;}
+.info-btn:hover{background:rgba(248,171,18,0.28);}
 .info-panel{display:none;background:rgba(59,158,255,0.05);border:1px solid rgba(59,158,255,0.18);border-radius:7px;padding:10px 13px;margin-top:8px;font-size:11px;color:var(--text2);line-height:1.65;}
 .info-panel.open{display:block;}
 .chart-sub{font-size:11px;color:var(--text3);font-family:var(--mono);}
@@ -1933,8 +1933,21 @@ function renderCashflow(){
   const dataCmp=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moCompras[mo]||0),0)*100)/100);
   const dataVnd=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moVendas[mo]||0),0)*100)/100);
 
-  // Saldo operacional (entradas - saídas)
-  const dataSaldo=dataEnt.map((e,i)=>Math.round((e-dataSai[i])*100)/100);
+  // Saldo: Entradas - Saídas - Compras + Vendas (recalcula dinamicamente ao toggler legenda)
+  function calcSaldo(chart){
+    const ds=chart.data.datasets;
+    const vis=lbl=>{ const d=ds.find(x=>x.label===lbl); return d&&!chart.getDatasetMeta(ds.indexOf(d)).hidden; };
+    return dataEnt.map((_,i)=>{
+      let s=0;
+      if(vis('Entradas')) s+=dataEnt[i];
+      if(vis('Saídas'))   s-=dataSai[i];
+      if(vis('Compras'))  s-=dataCmp[i];
+      if(vis('Vendas'))   s+=dataVnd[i];
+      return Math.round(s*100)/100;
+    });
+  }
+
+  const dataSaldo=dataEnt.map((_,i)=>Math.round((dataEnt[i]-dataSai[i]-dataCmp[i]+dataVnd[i])*100)/100);
 
   mkChart('ch-cashflow',{type:'bar',
     data:{labels,datasets:[
@@ -1949,8 +1962,22 @@ function renderCashflow(){
         yAxisID:'y2',order:0}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:tC2,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
+      plugins:{
+        legend:{
+          labels:{color:tC2,font:{size:11},boxWidth:12},
+          onClick(e,legendItem,legend){
+            const chart=legend.chart;
+            const idx=legendItem.datasetIndex;
+            const meta=chart.getDatasetMeta(idx);
+            meta.hidden=!meta.hidden;
+            // Recalcular saldo dinamicamente (não toggler o próprio Saldo)
+            const saldoDs=chart.data.datasets.find(d=>d.label==='Saldo');
+            if(saldoDs) saldoDs.data=calcSaldo(chart);
+            chart.update();
+          }
+        },
+        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}
+      },
       scales:{
         y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}},
           title:{display:true,text:'Valores',color:tC2,font:{size:9}}},

@@ -699,17 +699,8 @@ table.dre td.col-total{
     <div id="cf-period-pills" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
   </div>
   <div class="chart-card">
-    <div class="chart-header"><div><div class="chart-title">Fluxo de Caixa</div><div class="chart-sub" id="cf-chart-sub">Entradas (verde) × Saídas (vermelho) — valores pagos</div></div></div>
-    <div class="chart-wrap" style="height:300px"><canvas id="ch-cashflow" role="img" aria-label="Fluxo de caixa"></canvas></div>
-  </div>
-  <div class="chart-card" style="border-left:3px solid var(--amber);">
-    <div class="chart-header">
-      <div>
-        <div class="chart-title">Impacto do Imobilizado no Caixa</div>
-        <div class="chart-sub">Compra e Venda de Veículos — movimentações que saem do fluxo operacional</div>
-      </div>
-    </div>
-    <div class="chart-wrap" style="height:240px"><canvas id="ch-imob" role="img" aria-label="Impacto imobilizado"></canvas></div>
+    <div class="chart-header"><div><div class="chart-title">Fluxo de Caixa</div><div class="chart-sub" id="cf-chart-sub">Entradas · Saídas · Compras · Vendas de Veículos — valores pagos/lançados</div></div></div>
+    <div class="chart-wrap" style="height:320px"><canvas id="ch-cashflow" role="img" aria-label="Fluxo de caixa"></canvas></div>
   </div>
   <div class="chart-card">
     <div class="chart-header"><div><div class="chart-title">Saldo Acumulado</div><div class="chart-sub">Saldo financeiro acumulado ao longo do tempo</div></div></div>
@@ -1866,12 +1857,20 @@ function renderCashflow(){
   const fnCf=getFiltroFn('cashflow');
   for(let i=0;i<R.length;i++){
     const row=R[i];
-    if(row[I_DP]===-1) continue;
-    if(!CF_TIPOS_OK.has(TIPO[row[I_TIPO]])) continue;
-    const mo=MO[row[I_DP]]||''; // DATA DE PAGAMENTO
-    if(mo<'2015-01') continue;
-    if(fnCf&&!fnCf(mo)) continue;
-    moSet.add(mo);
+    const tipo=TIPO[row[I_TIPO]];
+    if(CF_TIPOS_OK.has(tipo)){
+      if(row[I_DP]===-1) continue;
+      const mo=MO[row[I_DP]]||'';
+      if(mo<'2015-01') continue;
+      if(fnCf&&!fnCf(mo)) continue;
+      moSet.add(mo);
+    }
+    if(tipo==='Compra de Veículo'||tipo==='Venda De Veículo'){
+      const mo=MO[row[I_DC]]||'';
+      if(mo<'2015-01') continue;
+      if(fnCf&&!fnCf(mo)) continue;
+      moSet.add(mo);
+    }
   }
   const allMo=[...moSet].sort();
 
@@ -1907,30 +1906,42 @@ function renderCashflow(){
   allMo.forEach((mo,i)=>mosIdx[mo]=i);
 
   // Pré-computar por mês
-  const moEntradas={},moSaidas={};
-  allMo.forEach(mo=>{moEntradas[mo]=0;moSaidas[mo]=0;});
+  const moEntradas={},moSaidas={},moCompras={},moVendas={};
+  allMo.forEach(mo=>{moEntradas[mo]=0;moSaidas[mo]=0;moCompras[mo]=0;moVendas[mo]=0;});
   for(let i=0;i<R.length;i++){
     const row=R[i];
-    if(row[I_DP]===-1) continue;
-    if(!CF_TIPOS_OK.has(TIPO[row[I_TIPO]])) continue;
-    const mo=MO[row[I_DP]]||'';
-    if(!(mo in moEntradas)) continue;
-    const v=row[I_VAL];
-    if(v>0) moEntradas[mo]+=v;
-    else moSaidas[mo]+=Math.abs(v);
+    const tipo=TIPO[row[I_TIPO]];
+    if(CF_TIPOS_OK.has(tipo)){
+      if(row[I_DP]===-1) continue;
+      const mo=MO[row[I_DP]]||'';
+      if(!(mo in moEntradas)) continue;
+      const v=row[I_VAL];
+      if(v>0) moEntradas[mo]+=v;
+      else moSaidas[mo]+=Math.abs(v);
+    }
+    if(tipo==='Compra de Veículo'||tipo==='Venda De Veículo'){
+      const mo=MO[row[I_DC]]||'';
+      if(!(mo in moCompras)) continue;
+      if(tipo==='Compra de Veículo') moCompras[mo]+=Math.abs(row[I_VAL]);
+      else moVendas[mo]+=Math.abs(row[I_VAL]);
+    }
   }
 
   const labels=grouped.map(g=>g.label);
   const dataEnt=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moEntradas[mo]||0),0)*100)/100);
   const dataSai=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moSaidas[mo]||0),0)*100)/100);
+  const dataCmp=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moCompras[mo]||0),0)*100)/100);
+  const dataVnd=grouped.map(g=>Math.round(g.mos.reduce((s,mo)=>s+(moVendas[mo]||0),0)*100)/100);
 
-  // Calcular saldo (entradas - saídas) por período
+  // Saldo operacional (entradas - saídas)
   const dataSaldo=dataEnt.map((e,i)=>Math.round((e-dataSai[i])*100)/100);
 
   mkChart('ch-cashflow',{type:'bar',
     data:{labels,datasets:[
       {label:'Entradas',data:dataEnt,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,yAxisID:'y'},
       {label:'Saídas',data:dataSai,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Compras',data:dataCmp,backgroundColor:mkRGBA(AMBER,'0.55'),borderRadius:3,yAxisID:'y'},
+      {label:'Vendas',data:dataVnd,backgroundColor:'rgba(100,180,255,0.65)',borderRadius:3,yAxisID:'y'},
       {label:'Saldo',data:dataSaldo,type:'line',
         borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
         borderWidth:2.5,pointRadius:4,pointHoverRadius:7,
@@ -1942,7 +1953,7 @@ function renderCashflow(){
         tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
       scales:{
         y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}},
-          title:{display:true,text:'Entradas / Saídas',color:tC2,font:{size:9}}},
+          title:{display:true,text:'Valores',color:tC2,font:{size:9}}},
         y2:{position:'right',grid:{display:false},
           ticks:{callback:v=>fmtK(v),color:'#f0b429',font:{size:10}},
           title:{display:true,text:'Saldo',color:'#f0b429',font:{size:9}}},
@@ -1968,35 +1979,7 @@ function renderCashflow(){
         x:{grid:{display:false},ticks:{color:tC2,font:{size:10},autoSkip:false}}}
     }});
 
-  // Gráfico imobilizado — Compra e Venda de Veículos agrupados por ano
-  const imobByYr={};ANOS12.forEach(y=>imobByYr[y]={cmp:0,vnd:0});
-  for(let i=0;i<R.length;i++){
-    const row=R[i];
-    const tipo=TIPO[row[I_TIPO]];
-    if(tipo!=='Compra de Veículo'&&tipo!=='Venda De Veículo') continue;
-    const mo=MO[row[I_DC]]||'';
-    const yr=mo.slice(0,4);
-    if(!imobByYr[yr]) continue;
-    if(tipo==='Compra de Veículo') imobByYr[yr].cmp+=Math.abs(row[I_VAL]);
-    else imobByYr[yr].vnd+=row[I_VAL];
-  }
-  const imobCmp=ANOS12.map(y=>imobByYr[y].cmp);
-  const imobVnd=ANOS12.map(y=>imobByYr[y].vnd);
-  const saldoImob=ANOS12.map((y,i)=>imobVnd[i]-imobCmp[i]);
-  mkChart('ch-imob',{type:'bar',
-    data:{labels:ANOS12,datasets:[
-      {label:'Compras',data:imobCmp,backgroundColor:mkRGBA(RED,'0.7'),borderRadius:3},
-      {label:'Vendas',data:imobVnd,backgroundColor:mkRGBA(GREEN,'0.7'),borderRadius:3},
-      {label:'Saldo',data:saldoImob,type:'line',borderColor:mkRGBA(AMBER,'1'),
-        backgroundColor:'transparent',tension:0.3,pointRadius:4,borderWidth:2,
-        pointBackgroundColor:mkRGBA(AMBER,'1')},
-    ]},
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:tC2,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
-      scales:{y:{grid:{color:gC2},ticks:{callback:v=>fmtK(v),color:tC2,font:{size:10}}},
-        x:{grid:{display:false},ticks:{color:tC2,font:{size:10},autoSkip:false}}}
-    }});
+
 }
 
 // ═══════════════════════════════════════════════════
@@ -3209,6 +3192,13 @@ function renderROE(){
   const porPlaca={};
   rows.forEach(r=>{if(!porPlaca[r.placa])porPlaca[r.placa]=[];porPlaca[r.placa].push(r);});
 
+  // Ordenar placas pelo ROE médio (maior → menor) — dinâmico pelo filtro
+  const placasOrdenadas=Object.keys(porPlaca).sort((a,b)=>{
+    const roeA=porPlaca[a].reduce((s,r)=>s+r.roe,0)/porPlaca[a].length;
+    const roeB=porPlaca[b].reduce((s,r)=>s+r.roe,0)/porPlaca[b].length;
+    return roeB-roeA;
+  });
+
   const isDark=!document.body.classList.contains('light');
   const gCR=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
   const tCR=isDark?'#5a7090':'#6a8090';
@@ -3217,7 +3207,8 @@ function renderROE(){
   if(!grid) return;
   grid.innerHTML='';
 
-  Object.entries(porPlaca).forEach(([placa,dados])=>{
+  placasOrdenadas.forEach(placa=>{
+    const dados=porPlaca[placa];
     dados.sort((a,b)=>a.ano-b.ano);
     const anos=dados.map(r=>r.ano);
     const roes=dados.map(r=>parseFloat((r.roe*100).toFixed(2)));

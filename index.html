@@ -602,7 +602,7 @@ table.dre td.col-total{
     </div>
     <div class="kpi-card amber">
       <div class="kpi-icon">%</div>
-      <div class="kpi-label">Margem de Lucro</div>
+      <div class="kpi-label">Margem Operacional</div>
       <div class="kpi-value amber" id="kpi-mar">—</div>
       <div class="kpi-delta">Lucro Operacional / Receita</div>
     </div>
@@ -776,6 +776,8 @@ table.dre td.col-total{
     <div class="kpi-card green"><div class="kpi-label">Total Receitas</div><div class="kpi-value green" id="an-rec">—</div></div>
     <div class="kpi-card red"><div class="kpi-label">Total Despesas</div><div class="kpi-value red" id="an-desp">—</div></div>
     <div class="kpi-card amber"><div class="kpi-label">Total Juros</div><div class="kpi-value amber" id="an-jur">—</div></div>
+    <div class="kpi-card blue"><div class="kpi-label">Lucro Financeiro</div><div class="kpi-value" id="an-luc">—</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">Margem Líquida</div><div class="kpi-value amber" id="an-marg">—</div></div>
   </div>
   <div class="chart-card">
     <div class="chart-title" style="margin-bottom:14px">Resultado Financeiro — Mês a Mês</div>
@@ -2835,6 +2837,11 @@ function renderAnalise(){
   setText('an-rec',fmtBR(totRec));
   setText('an-desp',fmtBR(totDesp));
   setText('an-jur',fmtBR(Math.abs(totJur)));
+  const totLuc=totRec-totDesp+totJur;
+  const totMarg=totRec>0?(totLuc/totRec*100):0;
+  const lucEl=document.getElementById('an-luc');
+  if(lucEl){lucEl.textContent=fmtBR(totLuc);lucEl.className='kpi-value '+(totLuc>=0?'green':'red');}
+  setText('an-marg',(totMarg>=0?'+':'')+totMarg.toFixed(1).replace('.',',')+' %');
 
   const isDark=!document.body.classList.contains('light');
   const gCA=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
@@ -2844,16 +2851,40 @@ function renderAnalise(){
   const recColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(GREEN,'0.78'):mkRGBA(GREEN,'0.25'));
   const despColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(RED,'0.78'):mkRGBA(RED,'0.25'));
   const jurColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(AMBER,'0.78'):mkRGBA(AMBER,'0.25'));
+  // Linha de Lucro Financeiro anual
+  const lucValsYr=ANOS12.map((_,i)=>Math.round((recVals[i]-despVals[i]+jurVals[i])*100)/100);
+  const barMaxYr=Math.max(0,...recVals,...despVals);
+  const BAR_FRAC_AN=3/4;
+  const yMaxYr=barMaxYr/BAR_FRAC_AN;
+  const sMaxYr=Math.max(...lucValsYr), sMinYr=Math.min(...lucValsYr);
+  const sRangeYr=Math.max(sMaxYr-sMinYr,1);
+  const y2MaxYr=sMaxYr+sRangeYr*0.15;
+  const y2MinYr=sMinYr-(sRangeYr*BAR_FRAC_AN/(1-BAR_FRAC_AN));
+
   mkChart('ch-analise-yr',{type:'bar',
     data:{labels:ANOS12,datasets:[
-      {label:'Receitas',data:recVals,backgroundColor:recColors,borderRadius:3},
-      {label:'Despesas',data:despVals,backgroundColor:despColors,borderRadius:3},
-      {label:'Juros',data:jurVals.map(v=>Math.abs(v)),backgroundColor:jurColors,borderRadius:3},
+      {label:'Receitas',data:recVals,backgroundColor:recColors,borderRadius:3,yAxisID:'y'},
+      {label:'Despesas',data:despVals,backgroundColor:despColors,borderRadius:3,yAxisID:'y'},
+      {label:'Juros',data:jurVals.map(v=>Math.abs(v)),backgroundColor:jurColors,borderRadius:3,yAxisID:'y'},
+      {label:'Lucro',data:lucValsYr,type:'line',
+        borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
+        borderWidth:2.5,pointRadius:4,pointHoverRadius:7,
+        pointBackgroundColor:mkRGBA(AMBER,'1'),tension:0.3,
+        yAxisID:'y2',order:0}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
-      scales:{y:{grid:{color:gCA},ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>{
+          if(c.dataset.label==='Lucro'){
+            const marg=recVals[c.dataIndex]>0?(c.parsed.y/recVals[c.dataIndex]*100):0;
+            return 'Lucro: '+fmtBR(c.parsed.y)+' ('+marg.toFixed(1).replace('.',',')+'%)';
+          }
+          return c.dataset.label+': '+fmtBR(c.parsed.y);
+        }}}},
+      scales:{
+        y:{grid:{color:gCA},min:0,max:yMaxYr,ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
+        y2:{position:'right',grid:{display:false},min:y2MinYr,max:y2MaxYr,
+          ticks:{callback:v=>fmtK(v),color:'#f0b429',font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
     }});
 
@@ -2918,16 +2949,39 @@ function renderAnalise(){
   const dataDesp=moSeqAn.map(mo=>Math.round(Math.abs(moDespV[mo]||0)*100)/100);
   const dataJur=moSeqAn.map(mo=>Math.round(Math.abs(moJurV[mo]||0)*100)/100);
 
+  const dataLuc=moSeqAn.map((_,i)=>Math.round((dataRec[i]-dataDesp[i]+dataJur[i])*100)/100);
+  const barMaxMo=Math.max(0,...dataRec,...dataDesp);
+  const BAR_FRAC_MO=3/4;
+  const yMaxMo=barMaxMo/BAR_FRAC_MO;
+  const sMaxMo=Math.max(...dataLuc), sMinMo=Math.min(...dataLuc);
+  const sRangeMo=Math.max(sMaxMo-sMinMo,1);
+  const y2MaxMo=sMaxMo+sRangeMo*0.15;
+  const y2MinMo=sMinMo-(sRangeMo*BAR_FRAC_MO/(1-BAR_FRAC_MO));
+
   mkChart('ch-analise-mo',{type:'bar',
     data:{labels:labelsAn,datasets:[
-      {label:'Receitas',data:dataRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3},
-      {label:'Despesas',data:dataDesp,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3},
-      {label:'Juros',data:dataJur,backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3},
+      {label:'Receitas',data:dataRec,backgroundColor:mkRGBA(GREEN,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Despesas',data:dataDesp,backgroundColor:mkRGBA(RED,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Juros',data:dataJur,backgroundColor:mkRGBA(AMBER,'0.75'),borderRadius:3,yAxisID:'y'},
+      {label:'Lucro',data:dataLuc,type:'line',
+        borderColor:mkRGBA(AMBER,'1'),backgroundColor:'transparent',
+        borderWidth:2.5,pointRadius:4,pointHoverRadius:7,
+        pointBackgroundColor:mkRGBA(AMBER,'1'),tension:0.3,
+        yAxisID:'y2',order:0}
     ]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{color:tCA,font:{size:11},boxWidth:12}},
-        tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBR(c.parsed.y)}}},
-      scales:{y:{grid:{color:gCA},ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
+        tooltip:{callbacks:{label:c=>{
+          if(c.dataset.label==='Lucro'){
+            const marg=dataRec[c.dataIndex]>0?(c.parsed.y/dataRec[c.dataIndex]*100):0;
+            return 'Lucro: '+fmtBR(c.parsed.y)+' ('+marg.toFixed(1).replace('.',',')+'%)';
+          }
+          return c.dataset.label+': '+fmtBR(c.parsed.y);
+        }}}},
+      scales:{
+        y:{grid:{color:gCA},min:0,max:yMaxMo,ticks:{callback:v=>fmtK(v),color:tCA,font:{size:10}}},
+        y2:{position:'right',grid:{display:false},min:y2MinMo,max:y2MaxMo,
+          ticks:{callback:v=>fmtK(v),color:'#f0b429',font:{size:10}}},
         x:{grid:{display:false},ticks:{color:tCA,font:{size:10},autoSkip:false}}}
     }});
 }

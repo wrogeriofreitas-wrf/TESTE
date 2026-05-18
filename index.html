@@ -2731,6 +2731,246 @@ function initScoreFilter(){
 // PENDÊNCIAS DE RECEBIMENTO
 // ═══════════════════════════════════════════════════
 function renderPendencias(){
+  initFiltro({filtroId:'pendencias', wrapId:'pend-yr-pills', usarDP:false, onApply:()=>{
+    window._pendFilters={};
+    renderPendencias();
+  }});
+  const fnPend = getFiltroFn('pendencias');
+
+  // Data de atualização
+  let dataAtuStr = '';
+  try{
+    const meta = window._payload && window._payload.meta;
+    if(meta && meta.gerado){
+      const [dt,hr] = meta.gerado.split(' ');
+      const [y,m,d] = dt.split('-');
+      dataAtuStr = `· Dados atualizados em: ${d}/${m}/${y}${hr?' às '+hr.slice(0,5):''}`;
+    }
+  }catch(e){}
+
+  // Coletar TODOS os pendentes do período
+  const todosPendentes = [];
+  for(let i=0;i<R.length;i++){
+    const row = R[i];
+    if(row[I_DP] !== -1) continue;
+    if(row[I_VAL] <= 0)  continue;
+    const mo = row[I_DC] >= 0 ? MO[row[I_DC]] : '';
+    if(fnPend && !fnPend(mo)) continue;
+    todosPendentes.push({
+      placa: CC[row[I_CC]] || '',
+      desc:  row[I_DESC] >= 0 ? DESC[row[I_DESC]] : '—',
+      forn:  row[I_FORN] >= 0 ? FORN[row[I_FORN]] : '—',
+      val:   row[I_VAL],
+      mo
+    });
+  }
+
+  const grid = document.getElementById('pend-grid');
+  if(!grid) return;
+
+  // ── FILTRO DE PLACA (topo da tela) ──────────────────────────
+  const allPlacas = [...new Set(todosPendentes.map(r=>r.placa))].sort();
+  if(!window._pendPlacaFilter) window._pendPlacaFilter = new Set(allPlacas);
+  // garantir novas placas entrem
+  allPlacas.forEach(p=>window._pendPlacaFilter.add(p));
+
+  let wrapPlaca = document.getElementById('pend-placa-wrap');
+  if(!wrapPlaca){
+    wrapPlaca = document.createElement('div');
+    wrapPlaca.id = 'pend-placa-wrap';
+    wrapPlaca.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;';
+    grid.parentElement.insertBefore(wrapPlaca, grid);
+  }
+  wrapPlaca.innerHTML = `<span style="font-size:10px;font-family:var(--mono);color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-right:4px;">Placa:</span>`+
+    allPlacas.map(p=>{
+      const on = window._pendPlacaFilter.has(p);
+      return `<button onclick="pendTogglePlaca('${p}')"
+        style="font-size:11px;font-family:var(--mono);padding:3px 10px;border-radius:5px;cursor:pointer;
+               color:${on?'var(--bg)':'var(--text3)'};
+               background:${on?'var(--amber)':'var(--bg2)'};
+               border:1px solid ${on?'var(--amber)':'var(--border)'};">${p}</button>`;
+    }).join('');
+
+  // ── RENDERIZAR CARDS ────────────────────────────────────────
+  grid.innerHTML = '';
+
+  const placasFiltradas = allPlacas.filter(p=>window._pendPlacaFilter.has(p));
+  if(placasFiltradas.length === 0){
+    grid.innerHTML = '<div style="font-size:12px;color:var(--text3);font-family:var(--mono);padding:12px 0;">Nenhuma placa selecionada.</div>';
+    return;
+  }
+
+  if(!window._pendFilters) window._pendFilters = {};
+
+  placasFiltradas.forEach(placa=>{
+    const itens = todosPendentes.filter(r=>r.placa===placa).sort((a,b)=>a.mo.localeCompare(b.mo));
+    if(!itens.length) return;
+
+    const cardId  = 'pend-card-'+placa.replace(/[^a-z0-9]/gi,'-');
+    const stateKey= 'pf_'+cardId;
+
+    // Inicializar estado do filtro
+    const allDesc = [...new Set(itens.map(r=>r.desc))].sort();
+    const allForn = [...new Set(itens.map(r=>r.forn))].sort();
+    const allVal  = [...new Set(itens.map(r=>fmtBR(r.val)))].sort();
+
+    if(!window._pendFilters[stateKey]){
+      window._pendFilters[stateKey] = {
+        desc: new Set(allDesc),
+        forn: new Set(allForn),
+        val:  new Set(allVal),
+        open: null
+      };
+    }
+    const st = window._pendFilters[stateKey];
+
+    // Filtro em cascata: aplicar desc → forn → val progressivamente
+    function getFiltered(exceptCol){
+      return itens.filter(r=>{
+        const okDesc = exceptCol==='desc' || st.desc.has(r.desc);
+        const okForn = exceptCol==='forn' || st.forn.has(r.forn);
+        const okVal  = exceptCol==='val'  || st.val.has(fmtBR(r.val));
+        return okDesc && okForn && okVal;
+      });
+    }
+
+    function buildCard(){
+      const filtered = getFiltered(null);
+      const total    = filtered.reduce((s,r)=>s+r.val, 0);
+
+      // Opções disponíveis em cascata
+      const optsDesc = [...new Set(getFiltered('desc').map(r=>r.desc))].sort();
+      const optsForn = [...new Set(getFiltered('forn').map(r=>r.forn))].sort();
+      const optsVal  = [...new Set(getFiltered('val').map(r=>fmtBR(r.val)))].sort();
+
+      function dropBtn(col, label, opts, set){
+        const someOff = opts.some(v=>!set.has(v));
+        return `<button onclick="event.stopPropagation();pendToggleDrop('${stateKey}','${col}','${cardId}')"
+          style="font-size:10px;font-family:var(--mono);white-space:nowrap;cursor:pointer;padding:3px 8px;border-radius:4px;
+                 color:${someOff?'var(--amber)':'var(--text2)'};
+                 background:${someOff?'rgba(248,171,18,0.12)':'transparent'};
+                 border:1px solid ${someOff?'var(--amber)':'var(--border)'};">
+          ${label} ${someOff?'⚑':''} ▾
+        </button>`;
+      }
+
+      function dropPanel(col, opts, set){
+        if(st.open !== col) return '';
+        const allOn = opts.every(v=>set.has(v));
+        const rows = opts.map(v=>`
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:4px 0;color:var(--text2);font-size:11px;">
+            <input type="checkbox" ${set.has(v)?'checked':''} onclick="event.stopPropagation();pendToggleVal('${stateKey}','${col}','${cardId}','${v.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this.checked)">
+            ${v}
+          </label>`).join('');
+        return `<div onclick="event.stopPropagation()" id="pend-drop-${cardId}-${col}"
+          style="position:absolute;z-index:200;top:calc(100% + 4px);left:0;
+                 background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+                 padding:8px 12px;min-width:200px;max-height:260px;overflow-y:auto;
+                 box-shadow:0 4px 16px rgba(0,0,0,.4);font-family:var(--mono);">
+          <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-weight:600;color:var(--text);font-size:11px;border-bottom:0.5px solid var(--border);padding-bottom:6px;margin-bottom:4px;">
+            <input type="checkbox" ${allOn?'checked':''} onclick="event.stopPropagation();pendSelectAll('${stateKey}','${col}','${cardId}',this.checked)">
+            Selecionar todos
+          </label>
+          ${rows}
+        </div>`;
+      }
+
+      const linhas = filtered.length === 0
+        ? `<div style="font-size:11px;color:var(--text3);padding:8px 0;">Nenhum lançamento com os filtros selecionados.</div>`
+        : filtered.map(r=>`
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
+                      font-size:11px;font-family:var(--mono);padding:5px 0;
+                      border-bottom:0.5px solid var(--border);">
+            <span style="color:var(--text);">${r.desc}</span>
+            <span style="color:var(--text2);">${r.forn}</span>
+            <span style="color:var(--green);text-align:right;min-width:110px;">${fmtBR(r.val)}</span>
+          </div>`).join('');
+
+      document.getElementById(cardId).innerHTML = `
+        <div style="margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:700;color:var(--amber);">${placa}</span>
+          <span style="font-size:12px;color:var(--text);font-weight:500;"> · Valores Pendentes de Recebimento </span>
+          <span style="font-size:11px;color:var(--text2);">${dataAtuStr}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text);margin-bottom:10px;font-family:var(--mono);">
+          ${filtered.length} de ${itens.length} lançamento${itens.length!==1?'s':''} · Total filtrado:
+          <span style="color:var(--green);font-weight:600;"> ${fmtBR(total)}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
+                    border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:4px;">
+          <div style="position:relative;">${dropBtn('desc','Descrição',optsDesc,st.desc)}${dropPanel('desc',optsDesc,st.desc)}</div>
+          <div style="position:relative;">${dropBtn('forn','Fornecedor/Cliente',optsForn,st.forn)}${dropPanel('forn',optsForn,st.forn)}</div>
+          <div style="position:relative;text-align:right;">${dropBtn('val','Valor',optsVal,st.val)}${dropPanel('val',optsVal,st.val)}</div>
+        </div>
+        ${linhas}`;
+    }
+
+    const cardEl = document.createElement('div');
+    cardEl.className = 'chart-card';
+    cardEl.style.borderLeft = '3px solid var(--amber)';
+    cardEl.id = cardId;
+    grid.appendChild(cardEl);
+    buildCard();
+
+    if(!window._pendBuilders) window._pendBuilders = {};
+    window._pendBuilders[cardId] = buildCard;
+  });
+
+  // Fechar dropdowns ao clicar fora
+  document.removeEventListener('click', window._pendCloseDrops);
+  window._pendCloseDrops = function(){
+    let changed = false;
+    if(window._pendFilters){
+      Object.values(window._pendFilters).forEach(st=>{ if(st.open){st.open=null;changed=true;} });
+    }
+    if(changed && window._pendBuilders){
+      Object.values(window._pendBuilders).forEach(fn=>fn());
+    }
+  };
+  document.addEventListener('click', window._pendCloseDrops);
+}
+
+window.pendTogglePlaca = function(placa){
+  if(!window._pendPlacaFilter) return;
+  if(window._pendPlacaFilter.has(placa)) window._pendPlacaFilter.delete(placa);
+  else window._pendPlacaFilter.add(placa);
+  window._pendFilters = {};
+  window._pendBuilders = {};
+  const grid = document.getElementById('pend-grid');
+  const wrap = document.getElementById('pend-placa-wrap');
+  if(wrap) wrap.remove();
+  renderPendencias();
+};
+
+window.pendToggleDrop = function(stateKey, col, cardId){
+  const st = window._pendFilters[stateKey];
+  if(!st) return;
+  st.open = st.open === col ? null : col;
+  window._pendBuilders[cardId]();
+};
+
+window.pendToggleVal = function(stateKey, col, cardId, val, checked){
+  const st = window._pendFilters[stateKey];
+  if(!st) return;
+  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
+  checked ? set.add(val) : set.delete(val);
+  window._pendBuilders[cardId]();
+};
+
+window.pendSelectAll = function(stateKey, col, cardId, checked){
+  const st = window._pendFilters[stateKey];
+  if(!st) return;
+  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
+  const drop = document.getElementById('pend-drop-'+cardId+'-'+col);
+  if(!drop) return;
+  drop.querySelectorAll('input[type=checkbox]').forEach((cb,i)=>{
+    if(i===0) return; // pular o "selecionar todos"
+    const lbl = cb.parentElement.textContent.trim();
+    checked ? set.add(lbl) : set.delete(lbl);
+    cb.checked = checked;
+  });
+  window._pendBuilders[cardId]();
+};
   initFiltro({filtroId:'pendencias', wrapId:'pend-yr-pills', usarDP:false, onApply:renderPendencias});
   const fnPend = getFiltroFn('pendencias');
 

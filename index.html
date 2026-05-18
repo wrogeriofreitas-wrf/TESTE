@@ -501,6 +501,7 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Análises</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-analise',this)"><span class="nav-icon">◫</span>Resultado Financeiro</div>
+      <div class="nav-item" onclick="nav('p-pendencias',this)"><span class="nav-icon">⏳</span>Pendências Recebimento</div>
       <div class="nav-item" onclick="nav('p-compravenda',this)"><span class="nav-icon">⇅</span>Compras x Vendas</div>
       <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span>Dist. Lucros</div>
       <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span>Rentabilidades</div>
@@ -533,7 +534,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0.2 Teste</div>
+      <div>Versão 1.0.3</div>
     </div>
   </div>
   </div>
@@ -871,6 +872,20 @@ table.dre td.col-total{
 </div>
 
 <!-- ════════════════════════════════
+     PENDÊNCIAS DE RECEBIMENTO
+════════════════════════════════ -->
+<div id="p-pendencias" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pendências de Recebimento</div>
+      <div class="page-sub">Lançamentos com valor a receber ainda não liquidados</div>
+    </div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;align-items:center;" id="pend-yr-pills"></div>
+  <div id="pend-grid" style="display:flex;flex-direction:column;gap:16px;"></div>
+</div>
+
+<!-- ════════════════════════════════
      CONTROLE
 ════════════════════════════════ -->
 <div id="p-ctrl" class="page">
@@ -914,8 +929,8 @@ table.dre td.col-total{
 // DATA LAYER
 // ═══════════════════════════════════════════════════
 let _D = null;
-let CC, CAT, TIPO, MO, DRV, R;
-const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7;
+let CC, CAT, TIPO, MO, DRV, R, DESC, FORN;
+const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7,I_DESC=8,I_FORN=9;
 
 
 let _usuarios=[];
@@ -967,6 +982,7 @@ async function loadData(){
     _D  = payload.d || payload;
     CC  = _D.CC;  CAT = _D.CAT;  TIPO= _D.TIPO;
     MO  = _D.MO;  DRV = _D.DRV;  R   = _D.R;
+    DESC= _D.DESC||[]; FORN= _D.FORN||[];
     OP_CCS = CC.filter(c=>!EXCL_CC.has(c));
     // Injetar data do JSON em todos os page-sub de todas as telas
     if(payload.meta && payload.meta.gerado){
@@ -1565,6 +1581,7 @@ function renderPage(id){
   else if(id==='p-ranking') renderRanking();
   else if(id==='p-score') renderScore();
   else if(id==='p-analise') renderAnalise();
+  else if(id==='p-pendencias') renderPendencias();
   else if(id==='p-compravenda'&& !_rendered[id]){ renderCompraVenda(); _rendered[id]=1; }
   else if(id==='p-lucro') renderSimple('a6','Distribuição Lucro');
   else if(id==='p-rent'       && !_rendered[id]){ renderRent(); _rendered[id]=1; }
@@ -2709,6 +2726,74 @@ function initScoreFilter(){
 // ═══════════════════════════════════════════════════
 // RENDER CONTROLE — validação por competência
 // ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// PENDÊNCIAS DE RECEBIMENTO
+// ═══════════════════════════════════════════════════
+function renderPendencias(){
+  initFiltro({filtroId:'pendencias', wrapId:'pend-yr-pills', usarDP:false, onApply:renderPendencias});
+  const fnPend = getFiltroFn('pendencias');
+
+  // Coletar pendentes: I_DP=-1 e val>0, filtrados por período e placa
+  const porPlaca = {};
+  for(let i=0;i<R.length;i++){
+    const row = R[i];
+    if(row[I_DP] !== -1) continue;       // só pendentes
+    if(row[I_VAL] <= 0) continue;        // só valores positivos (a receber)
+    const mo = row[I_DC] >= 0 ? MO[row[I_DC]] : '';
+    if(fnPend && !fnPend(mo)) continue;  // filtro de período
+    const cc = CC[row[I_CC]] || '';
+    if(!porPlaca[cc]) porPlaca[cc] = [];
+    porPlaca[cc].push({
+      desc: row[I_DESC] >= 0 ? DESC[row[I_DESC]] : '—',
+      forn: row[I_FORN] >= 0 ? FORN[row[I_FORN]] : '—',
+      val:  row[I_VAL],
+      mo
+    });
+  }
+
+  const grid = document.getElementById('pend-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+
+  const placas = Object.keys(porPlaca).sort();
+  if(placas.length === 0){
+    grid.innerHTML = '<div style="font-size:12px;color:var(--green);font-family:var(--mono);padding:12px 0;">✓ Nenhuma pendência de recebimento no período selecionado.</div>';
+    return;
+  }
+
+  placas.forEach(placa=>{
+    const itens = porPlaca[placa].sort((a,b)=>a.mo.localeCompare(b.mo));
+    const total = itens.reduce((s,r)=>s+r.val, 0);
+
+    const linhas = itens.map(r=>`
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
+                  font-size:11px;font-family:var(--mono);padding:5px 0;
+                  border-bottom:0.5px solid var(--border);">
+        <span style="color:var(--text2);">${r.desc}</span>
+        <span style="color:var(--text3);">${r.forn}</span>
+        <span style="color:var(--green);text-align:right;min-width:110px;">${fmtBR(r.val)}</span>
+      </div>`).join('');
+
+    grid.innerHTML += `
+      <div class="chart-card" style="border-left:3px solid var(--amber);">
+        <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:4px;">
+          ${placa} <span style="font-weight:400;color:var(--text3);font-size:11px;">· Valores Pendentes de Recebimento</span>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-family:var(--mono);">
+          ${itens.length} lançamento${itens.length!==1?'s':''} · Total:
+          <span style="color:var(--green);font-weight:600;">${fmtBR(total)}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;
+                    font-size:10px;color:var(--text3);text-transform:uppercase;
+                    letter-spacing:.7px;font-family:var(--mono);
+                    border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:4px;">
+          <span>Descrição</span><span>Fornecedor / Cliente</span><span style="text-align:right;">Valor</span>
+        </div>
+        ${linhas}
+      </div>`;
+  });
+}
+
 function renderCtrl(){
   const CTRL_TIPOS = [
     { tipoIdx: 4, label: 'Transferências' },

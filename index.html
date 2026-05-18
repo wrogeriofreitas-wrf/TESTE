@@ -2785,15 +2785,23 @@ function renderPendencias(){
   wrapPlaca.innerHTML = '';
   const allOn = allPlacas.every(p=>window._pendPlacaFilter.has(p));
 
+  function reRenderPendencias(){
+    window._pendFilters={};
+    window._pendBuilders={};
+    const w=document.getElementById('pend-placa-wrap');
+    if(w) w.remove();
+    const g=document.getElementById('pend-grid');
+    if(g) g.innerHTML='';
+    renderPendencias();
+  }
+
   // Pill "Todas"
   const pillTodas = document.createElement('div');
   pillTodas.className = 'yr-pill' + (allOn?' yr-all':'');
   pillTodas.textContent = 'Todas';
   pillTodas.onclick = ()=>{
     window._pendPlacaFilter = new Set(allPlacas);
-    window._pendFilters={}; window._pendBuilders={};
-    const w=document.getElementById('pend-placa-wrap'); if(w) w.remove();
-    renderPendencias();
+    reRenderPendencias();
   };
   wrapPlaca.appendChild(pillTodas);
 
@@ -2804,15 +2812,16 @@ function renderPendencias(){
     pill.className = 'yr-pill' + (!allOn && on?' yr-sel':'');
     pill.textContent = p;
     pill.onclick = (e)=>{
-      if(e.ctrlKey||e.metaKey||window._isTouchDevice){
+      if(e.ctrlKey||e.metaKey){
         if(window._pendPlacaFilter.has(p)) window._pendPlacaFilter.delete(p);
         else window._pendPlacaFilter.add(p);
       } else {
-        window._pendPlacaFilter = new Set([p]);
+        // Clique simples: se só esta está selecionada, voltar para todas
+        const somenteEsta = window._pendPlacaFilter.size===1 && window._pendPlacaFilter.has(p);
+        window._pendPlacaFilter = somenteEsta ? new Set(allPlacas) : new Set([p]);
       }
-      window._pendFilters={}; window._pendBuilders={};
-      const w=document.getElementById('pend-placa-wrap'); if(w) w.remove();
-      renderPendencias();
+      if(window._pendPlacaFilter.size===0) window._pendPlacaFilter=new Set(allPlacas);
+      reRenderPendencias();
     };
     wrapPlaca.appendChild(pill);
   });

@@ -2770,8 +2770,8 @@ function renderPendencias(){
 
   // ── FILTRO DE PLACA (topo da tela) — padrão yr-pill ────────
   const allPlacas = [...new Set(todosPendentes.map(r=>r.placa))].sort();
+  // Inicializar apenas na primeira vez — nunca sobreescrever seleção do usuário
   if(!window._pendPlacaFilter) window._pendPlacaFilter = new Set(allPlacas);
-  allPlacas.forEach(p=>window._pendPlacaFilter.add(p));
 
   let wrapPlaca = document.getElementById('pend-placa-wrap');
   if(!wrapPlaca){

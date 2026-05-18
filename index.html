@@ -3571,6 +3571,7 @@ const FILTROS = {
   cashflow:     { yrs: new Set(), period: '' },
   ranking:      { yrs: new Set(), period: '' },
   analise:      { yrs: new Set(), period: '' },
+  pendencias:   { yrs: new Set(), period: '' },
   compravenda:  { yrs: new Set(), period: '' },
   lucro:        { yrs: new Set(), period: '' },
   rent:         { yrs: new Set(), period: '' },
@@ -3692,8 +3693,8 @@ function resetFiltro(filtroId){
   // Limpar dataset.init para re-renderizar pills
   const wrapMap={
     overview:'ov-yr-pills', cashflow:'cf-yr-pills', ranking:'rank-yr-pills',
-    analise:'an-yr-pills', compravenda:'cv-yr-pills', lucro:'luc-filter-pills',
-    rent:'rent-yr-pills', score:'sc-yr-pills', roe:'roe-yr-pills'
+    analise:'an-yr-pills', pendencias:'pend-yr-pills', compravenda:'cv-yr-pills',
+    lucro:'luc-filter-pills', rent:'rent-yr-pills', score:'sc-yr-pills', roe:'roe-yr-pills'
   };
   const wrap=document.getElementById(wrapMap[filtroId]);
   if(wrap){ wrap.dataset.init=''; wrap.innerHTML=''; }

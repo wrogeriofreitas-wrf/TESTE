@@ -501,7 +501,7 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Análises</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-analise',this)"><span class="nav-icon">◫</span>Resultado Financeiro</div>
-      <div class="nav-item" onclick="nav('p-pendencias',this)"><span class="nav-icon">⏳</span>Pendências Recebimento</div>
+      <div class="nav-item" onclick="nav('p-pendencias',this)"><span class="nav-icon">⏳</span><span style="text-decoration:underline;text-underline-offset:3px;">Pendências Recebimento</span></div>
       <div class="nav-item" onclick="nav('p-compravenda',this)"><span class="nav-icon">⇅</span>Compras x Vendas</div>
       <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span>Dist. Lucros</div>
       <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span>Rentabilidades</div>
@@ -979,6 +979,7 @@ async function loadData(){
     const payload = JSON.parse(rawText);
     // Aceita dois formatos: {meta,d:{...}} ou o objeto _D cru
     _usuarios = payload.login || [];
+    window._payload = payload;
     _D  = payload.d || payload;
     CC  = _D.CC;  CAT = _D.CAT;  TIPO= _D.TIPO;
     MO  = _D.MO;  DRV = _D.DRV;  R   = _D.R;
@@ -2733,14 +2734,26 @@ function renderPendencias(){
   initFiltro({filtroId:'pendencias', wrapId:'pend-yr-pills', usarDP:false, onApply:renderPendencias});
   const fnPend = getFiltroFn('pendencias');
 
-  // Coletar pendentes: I_DP=-1 e val>0, filtrados por período e placa
+  // Data de atualização do JSON
+  let dataAtuStr = '';
+  if(window._D && window._payload && window._payload.meta && window._payload.meta.gerado){
+    const partes = window._payload.meta.gerado.split(' ')[0].split('-');
+    const hora   = window._payload.meta.gerado.split(' ')[1]||'';
+    dataAtuStr   = ' (Atualizado em: '+partes[2]+'/'+partes[1]+'/'+partes[0]+(hora?' às '+hora.slice(0,5):'')+')';
+  } else {
+    // Tentar pegar do page-sub que já tem a data injetada
+    const sub = document.querySelector('.page-sub em');
+    if(sub) dataAtuStr = ' '+sub.textContent.trim();
+  }
+
+  // Coletar pendentes
   const porPlaca = {};
   for(let i=0;i<R.length;i++){
     const row = R[i];
-    if(row[I_DP] !== -1) continue;       // só pendentes
-    if(row[I_VAL] <= 0) continue;        // só valores positivos (a receber)
+    if(row[I_DP] !== -1) continue;
+    if(row[I_VAL] <= 0)  continue;
     const mo = row[I_DC] >= 0 ? MO[row[I_DC]] : '';
-    if(fnPend && !fnPend(mo)) continue;  // filtro de período
+    if(fnPend && !fnPend(mo)) continue;
     const cc = CC[row[I_CC]] || '';
     if(!porPlaca[cc]) porPlaca[cc] = [];
     porPlaca[cc].push({
@@ -2763,36 +2776,140 @@ function renderPendencias(){
 
   placas.forEach(placa=>{
     const itens = porPlaca[placa].sort((a,b)=>a.mo.localeCompare(b.mo));
-    const total = itens.reduce((s,r)=>s+r.val, 0);
+    const cardId = 'pend-card-'+placa.replace(/[^a-z0-9]/gi,'-');
 
-    const linhas = itens.map(r=>`
-      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
-                  font-size:11px;font-family:var(--mono);padding:5px 0;
-                  border-bottom:0.5px solid var(--border);">
-        <span style="color:var(--text2);">${r.desc}</span>
-        <span style="color:var(--text3);">${r.forn}</span>
-        <span style="color:var(--green);text-align:right;min-width:110px;">${fmtBR(r.val)}</span>
-      </div>`).join('');
+    // Valores únicos para os filtros
+    const uniqDesc = [...new Set(itens.map(r=>r.desc))].sort();
+    const uniqForn = [...new Set(itens.map(r=>r.forn))].sort();
+    const uniqVal  = [...new Set(itens.map(r=>fmtBR(r.val)))].sort();
 
-    grid.innerHTML += `
-      <div class="chart-card" style="border-left:3px solid var(--amber);">
-        <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:4px;">
-          ${placa} <span style="font-weight:400;color:var(--text3);font-size:11px;">· Valores Pendentes de Recebimento</span>
+    // Estado dos filtros por card
+    const stateKey = 'pend_filter_'+cardId;
+    if(!window._pendFilters) window._pendFilters = {};
+    if(!window._pendFilters[stateKey]){
+      window._pendFilters[stateKey] = {
+        desc: new Set(uniqDesc),
+        forn: new Set(uniqForn),
+        val:  new Set(uniqVal),
+        open: null // qual dropdown está aberto: 'desc','forn','val' ou null
+      };
+    }
+    const st = window._pendFilters[stateKey];
+    // Garantir que novos valores entrem no set
+    uniqDesc.forEach(v=>st.desc.add(v));
+    uniqForn.forEach(v=>st.forn.add(v));
+    uniqVal.forEach(v=>st.val.add(v));
+
+    function buildCard(){
+      const filtered = itens.filter(r=>
+        st.desc.has(r.desc) && st.forn.has(r.forn) && st.val.has(fmtBR(r.val))
+      );
+      const total = filtered.reduce((s,r)=>s+r.val, 0);
+
+      function dropBtn(col, label){
+        const allOn = col==='desc'?uniqDesc.every(v=>st.desc.has(v)):
+                      col==='forn'?uniqForn.every(v=>st.forn.has(v)):
+                                   uniqVal.every(v=>st.val.has(v));
+        const someOff = !allOn;
+        return `<button onclick="pendToggleDrop('${stateKey}','${col}','${cardId}')"
+          style="font-size:10px;font-family:var(--mono);
+                 color:${someOff?'var(--amber)':'var(--text2)'};
+                 background:${someOff?'var(--amber2)':'transparent'};
+                 border:1px solid ${someOff?'var(--amber)':'var(--border)'};
+                 border-radius:4px;padding:2px 7px;cursor:pointer;white-space:nowrap;">
+          ${label} ${someOff?'⚑':''} ▾
+        </button>`;
+      }
+
+      function dropPanel(col){
+        if(st.open !== col) return '';
+        const opts = col==='desc'?uniqDesc:col==='forn'?uniqForn:uniqVal;
+        const set  = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
+        const allOn = opts.every(v=>set.has(v));
+        return `<div id="pend-drop-${cardId}-${col}"
+          style="position:absolute;z-index:99;background:var(--bg2);border:1px solid var(--border);
+                 border-radius:6px;padding:8px 10px;min-width:200px;max-height:260px;
+                 overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.3);font-family:var(--mono);font-size:11px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;border-bottom:0.5px solid var(--border);padding-bottom:6px;">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;color:var(--text);">
+              <input type="checkbox" ${allOn?'checked':''} onchange="pendSelectAll('${stateKey}','${col}','${cardId}',this.checked)"> Selecionar todos
+            </label>
+          </div>
+          ${opts.map(v=>`
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0;color:var(--text2);">
+              <input type="checkbox" ${set.has(v)?'checked':''} onchange="pendToggleVal('${stateKey}','${col}','${cardId}','${v.replace(/'/g,"\\'")}',this.checked)">
+              ${v}
+            </label>`).join('')}
+        </div>`;
+      }
+
+      const linhas = filtered.map(r=>`
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
+                    font-size:11px;font-family:var(--mono);padding:5px 0;
+                    border-bottom:0.5px solid var(--border);">
+          <span style="color:var(--text2);">${r.desc}</span>
+          <span style="color:var(--text3);">${r.forn}</span>
+          <span style="color:var(--green);text-align:right;min-width:110px;">${fmtBR(r.val)}</span>
+        </div>`).join('');
+
+      document.getElementById(cardId).innerHTML = `
+        <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">
+          ${placa}
+          <span style="font-weight:400;color:var(--text3);font-size:11px;">· Valores Pendentes de Recebimento${dataAtuStr}</span>
         </div>
         <div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-family:var(--mono);">
-          ${itens.length} lançamento${itens.length!==1?'s':''} · Total:
+          ${filtered.length} de ${itens.length} lançamento${itens.length!==1?'s':''} · Total filtrado:
           <span style="color:var(--green);font-weight:600;">${fmtBR(total)}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;
-                    font-size:10px;color:var(--text3);text-transform:uppercase;
-                    letter-spacing:.7px;font-family:var(--mono);
-                    border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:4px;">
-          <span>Descrição</span><span>Fornecedor / Cliente</span><span style="text-align:right;">Valor</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
+                    border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:4px;position:relative;">
+          <div style="position:relative;">${dropBtn('desc','Descrição')}${dropPanel('desc')}</div>
+          <div style="position:relative;">${dropBtn('forn','Fornecedor/Cliente')}${dropPanel('forn')}</div>
+          <div style="position:relative;">${dropBtn('val','Valor')}${dropPanel('val')}</div>
         </div>
-        ${linhas}
-      </div>`;
+        ${filtered.length===0
+          ? '<div style="font-size:11px;color:var(--text3);padding:8px 0;">Nenhum lançamento com os filtros selecionados.</div>'
+          : linhas}`;
+    }
+
+    const cardEl = document.createElement('div');
+    cardEl.className = 'chart-card';
+    cardEl.style.borderLeft = '3px solid var(--amber)';
+    cardEl.id = cardId;
+    grid.appendChild(cardEl);
+    buildCard();
+
+    // Registrar buildCard globalmente para callbacks
+    if(!window._pendBuilders) window._pendBuilders = {};
+    window._pendBuilders[cardId] = buildCard;
   });
 }
+
+window.pendToggleDrop = function(stateKey, col, cardId){
+  const st = window._pendFilters[stateKey];
+  st.open = st.open === col ? null : col;
+  window._pendBuilders[cardId]();
+};
+
+window.pendToggleVal = function(stateKey, col, cardId, val, checked){
+  const st = window._pendFilters[stateKey];
+  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
+  checked ? set.add(val) : set.delete(val);
+  window._pendBuilders[cardId]();
+};
+
+window.pendSelectAll = function(stateKey, col, cardId, checked){
+  const st = window._pendFilters[stateKey];
+  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
+  const card = document.getElementById(cardId);
+  if(!card) return;
+  // pegar todos os valores do dropdown atual
+  card.querySelectorAll(`#pend-drop-${cardId}-${col} input[type=checkbox]:not(:first-child)`).forEach(cb=>{
+    checked ? set.add(cb.parentElement.textContent.trim()) : set.delete(cb.parentElement.textContent.trim());
+    cb.checked = checked;
+  });
+  window._pendBuilders[cardId]();
+};
 
 function renderCtrl(){
   const CTRL_TIPOS = [

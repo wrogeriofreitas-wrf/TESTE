@@ -2812,6 +2812,8 @@ function renderPendencias(){
     pill.className = 'yr-pill' + (!allOn && on?' yr-sel':'');
     pill.textContent = p;
     pill.onclick = (e)=>{
+      e.stopPropagation();
+      console.log('pill clicada:', p, 'filtro antes:', [...window._pendPlacaFilter]);
       if(e.ctrlKey||e.metaKey){
         if(window._pendPlacaFilter.has(p)) window._pendPlacaFilter.delete(p);
         else window._pendPlacaFilter.add(p);

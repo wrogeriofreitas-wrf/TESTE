@@ -5,8 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>DashLog</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
 /* ═══════════════════════════════════════
    DESIGN TOKENS
@@ -501,7 +502,7 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Análises</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-analise',this)"><span class="nav-icon">◫</span>Resultado Financeiro</div>
-      <div class="nav-item" onclick="nav('p-pendencias',this)"><span class="nav-icon">⏳</span><span style="text-decoration:underline;text-underline-offset:3px;">Pendências Recebimento</span></div>
+      <div class="nav-item" onclick="nav('p-pendencias',this)"><span class="nav-icon">⧗</span><span style="text-decoration:underline;text-underline-offset:3px;">Pendências Recebimento</span></div>
       <div class="nav-item" onclick="nav('p-compravenda',this)"><span class="nav-icon">⇅</span>Compras x Vendas</div>
       <div class="nav-item" onclick="nav('p-lucro',this)"><span class="nav-icon">◆</span>Dist. Lucros</div>
       <div class="nav-item" onclick="nav('p-rent',this)"><span class="nav-icon">≈</span>Rentabilidades</div>
@@ -518,7 +519,7 @@ table.dre td.col-total{
     <div class="nav-label" onclick="toggleNav(this)">Controle</div>
     <div class="nav-items">
       <div class="nav-item" onclick="nav('p-ctrl',this)" id="nav-ctrl">
-        <span class="nav-icon">⚠</span>Cartões Controle
+        <span class="nav-icon">⚠︎</span>Cartões Controle
         <span class="nav-badge" id="ctrl-badge">3</span>
       </div>
     </div>
@@ -526,7 +527,7 @@ table.dre td.col-total{
   <div class="nav-group" id="nav-group-patrimonio">
     <div class="nav-label" onclick="toggleNav(this)">Patrimônio</div>
     <div class="nav-items">
-      <div class="nav-item" onclick="nav('p-fichas',this)"><span class="nav-icon">📋</span>Fichas dos Veículos</div>
+      <div class="nav-item" onclick="nav('p-fichas',this)"><span class="nav-icon">▤</span>Fichas dos Veículos</div>
     </div>
   </div>
   </div><!-- /nav-groups -->
@@ -534,7 +535,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0.3</div>
+      <div>Versão 1.0.4</div>
     </div>
   </div>
   </div>
@@ -972,7 +973,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 async function loadData(){
   const msgEl = document.getElementById('dl-msg');
   try{
-    const resp = await fetch('./dados.json', {cache: 'no-cache'});
+    const resp = await fetch('./dados.json?v=' + Date.now(), {cache: 'no-cache'});
     if(!resp.ok) throw new Error('HTTP ' + resp.status);
     const buf = await resp.arrayBuffer();
     const rawText = new TextDecoder('windows-1252').decode(buf);
@@ -2997,32 +2998,6 @@ window.pendSelectAll = function(stateKey, col, cardId, checked){
   window._pendBuilders[cardId]();
 };
 
-window.pendToggleDrop = function(stateKey, col, cardId){
-  const st = window._pendFilters[stateKey];
-  st.open = st.open === col ? null : col;
-  window._pendBuilders[cardId]();
-};
-
-window.pendToggleVal = function(stateKey, col, cardId, val, checked){
-  const st = window._pendFilters[stateKey];
-  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
-  checked ? set.add(val) : set.delete(val);
-  window._pendBuilders[cardId]();
-};
-
-window.pendSelectAll = function(stateKey, col, cardId, checked){
-  const st = window._pendFilters[stateKey];
-  const set = col==='desc'?st.desc:col==='forn'?st.forn:st.val;
-  const card = document.getElementById(cardId);
-  if(!card) return;
-  // pegar todos os valores do dropdown atual
-  card.querySelectorAll(`#pend-drop-${cardId}-${col} input[type=checkbox]:not(:first-child)`).forEach(cb=>{
-    checked ? set.add(cb.parentElement.textContent.trim()) : set.delete(cb.parentElement.textContent.trim());
-    cb.checked = checked;
-  });
-  window._pendBuilders[cardId]();
-};
-
 function renderCtrl(){
   const CTRL_TIPOS = [
     { tipoIdx: 4, label: 'Transferências' },
@@ -3774,7 +3749,7 @@ function renderROEDecisao(DATA){
 async function loadPatrimonio(){
   if(window._PAT) return window._PAT;
   try{
-    const res=await fetch('patrimonio.json');
+    const res=await fetch('patrimonio.json?v=' + Date.now());
     if(!res.ok) throw new Error('patrimonio.json não encontrado');
     window._PAT=await res.json();
     return window._PAT;

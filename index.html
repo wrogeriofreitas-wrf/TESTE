@@ -535,7 +535,7 @@ table.dre td.col-total{
       <span style="font-size:13px;">⎋</span> Sair
     </div>
     <div style="text-align:center;margin-top:8px;font-size:10px;color:var(--text3);font-family:var(--mono);">
-      <div>Versão 1.0.4</div>
+      <div>Versão 10/06/2026 - 20:35</div>
     </div>
   </div>
   </div>
@@ -986,6 +986,7 @@ async function loadData(){
     MO  = _D.MO;  DRV = _D.DRV;  R   = _D.R;
     DESC= _D.DESC||[]; FORN= _D.FORN||[];
     OP_CCS = CC.filter(c=>!EXCL_CC.has(c));
+    OP_CCS_SET = new Set(OP_CCS);
     // Injetar data do JSON em todos os page-sub de todas as telas
     if(payload.meta && payload.meta.gerado){
       const partes=payload.meta.gerado.split(' ')[0].split('-');
@@ -1029,10 +1030,18 @@ const STATE = {
 // Excluir CCs não operacionais
 const EXCL_CC = new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
 let OP_CCS = []; // populado em loadData() após CC ser carregado
+let OP_CCS_SET = new Set(); // versão Set para buscas O(1) em loops
 
 // ═══════════════════════════════════════════════════
 // UTILITIES
 // ═══════════════════════════════════════════════════
+// Escape de HTML — protege contra valores com <, >, &, aspas vindos da planilha
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function fmtBR(v, decimals=2){
   if(v===null||v===undefined) return '—';
   const neg=v<0, abs=Math.abs(v);
@@ -1208,9 +1217,6 @@ function precompute(){
     });
   });
 
-  const now=new Date();
-  const limSupStatic=now.getFullYear()*12+now.getMonth()+1; // usado só no rentByYear/dreData
-
   for(let i=0;i<R.length;i++){
     const row=R[i];
     const cc  = CC[row[I_CC]];
@@ -1221,20 +1227,17 @@ function precompute(){
     const yr  = mo.slice(0,4);
     const mes = parseInt(mo.slice(5,7))-1; // 0-indexed
 
-    // byTipoYear e rentByYear: sem limite superior — mostra todos os lançamentos
-    const isFuturo = false; // sem restrição de data futura
-
-    // byTipoYear: COM limite superior — exclui meses futuros
-    if(!isFuturo && tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
+    // byTipoYear e rentByYear: SEM limite superior — inclui meses futuros
+    // com lançamentos previstos (decisão da sessão de 19/mai)
+    if(tipos.includes(tipo) && byTipoYear[tipo][yr]!==undefined)
       byTipoYear[tipo][yr]+=val;
 
-    // rentByYear e rentByCC: também com limite superior
-    if(!isFuturo && !EXCL_RENT.has(cc) && mo && rentByYear[yr]!==undefined){
+    if(!EXCL_RENT.has(cc) && mo && rentByYear[yr]!==undefined){
       rentByYear[yr]+=val;
       if(rentByCC[cc] && rentByCC[cc][yr]!==undefined) rentByCC[cc][yr]+=val;
     }
 
-    if(OP_CCS.includes(cc) && dreData[cc][yr] && dreData[cc][yr][cat] && mes>=0 && mes<12)
+    if(OP_CCS_SET.has(cc) && dreData[cc][yr] && dreData[cc][yr][cat] && mes>=0 && mes<12)
       dreData[cc][yr][cat][mes]+=val;
   }
 
@@ -2898,7 +2901,7 @@ function renderPendencias(){
         const rows = opts.map(v=>`
           <label style="display:flex;align-items:center;gap:7px;cursor:pointer;padding:4px 0;color:var(--text2);font-size:11px;">
             <input type="checkbox" ${set.has(v)?'checked':''} onclick="event.stopPropagation();pendToggleVal('${stateKey}','${col}','${cardId}','${v.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this.checked)">
-            ${v}
+            ${esc(v)}
           </label>`).join('');
         return `<div onclick="event.stopPropagation()" id="pend-drop-${cardId}-${col}"
           style="position:absolute;z-index:200;top:calc(100% + 4px);left:0;
@@ -2919,8 +2922,8 @@ function renderPendencias(){
           <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;
                       font-size:11px;font-family:var(--mono);padding:5px 0;
                       border-bottom:0.5px solid var(--border);">
-            <span style="color:var(--text);">${r.desc}</span>
-            <span style="color:var(--text2);">${r.forn}</span>
+            <span style="color:var(--text);">${esc(r.desc)}</span>
+            <span style="color:var(--text2);">${esc(r.forn)}</span>
             <span style="color:var(--green);text-align:right;min-width:110px;">${fmtBR(r.val)}</span>
           </div>`).join('');
 
@@ -3005,19 +3008,20 @@ function renderCtrl(){
     { tipoIdx: 5, label: 'Descarga' },
   ];
 
-  function getByMonth(tipoIdx){
-    const byMo = {};
-    for(let i=0;i<R.length;i++){
-      const row = R[i];
-      if(row[I_TIPO] !== tipoIdx) continue;
-      const moI = row[I_DC];
-      if(moI < 0) continue;
-      const mo = MO[moI];
-      if(!mo) continue;
-      byMo[mo] = (byMo[mo]||0) + row[I_VAL];
-    }
-    return byMo;
+  // Uma única varredura de R para todos os tipos (antes: 1 varredura por tipo)
+  const _byMoAll = {};
+  CTRL_TIPOS.forEach(({tipoIdx})=>{ _byMoAll[tipoIdx] = {}; });
+  for(let i=0;i<R.length;i++){
+    const row = R[i];
+    const t = row[I_TIPO];
+    if(!(t in _byMoAll)) continue;
+    const moI = row[I_DC];
+    if(moI < 0) continue;
+    const mo = MO[moI];
+    if(!mo) continue;
+    _byMoAll[t][mo] = (_byMoAll[t][mo]||0) + row[I_VAL];
   }
+  function getByMonth(tipoIdx){ return _byMoAll[tipoIdx]; }
 
   function fmtMo(mo){
     const [y,m] = mo.split('-');
@@ -3963,11 +3967,9 @@ window.addEventListener('DOMContentLoaded', async ()=>{
     initRankingFilter();
     initOvFilter();
     initScoreFilter();
-    renderOverview();
-    renderCashflow();
-    renderRanking();
-    renderScore();
-    renderCtrl();
+    renderOverview();              // tela inicial (visível)
+    renderCtrl();                  // mantido no boot: alimenta o badge da nav
+    // Demais telas renderizam ao serem abertas (lazy) via renderPage()
     initChartInfo();
     initTelaInfo();
     // Pre-load patrimônio in background

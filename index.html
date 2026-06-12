@@ -2185,7 +2185,7 @@ function renderScore(){
         if(!porMes[mo]) porMes[mo]={rec:0,desp:0};
         porMes[mo].desp+=Math.abs(val);
       }
-      if(km>0){ if(km<kmMin)kmMin=km; if(km>kmMax)kmMax=km; }
+      if(cat==='COMBUSTIVEL'&&km>0){ if(km<kmMin)kmMin=km; if(km>kmMax)kmMax=km; }
       if(lt>0) lts+=lt;
     }
 

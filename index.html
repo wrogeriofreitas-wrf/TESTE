@@ -21,7 +21,7 @@
   --border:   rgba(255,255,255,0.07);
   --border2:  rgba(255,255,255,0.12);
   --text:     #e2e8f0;
-  --text2:    #7a8ea8;
+  --text2:    #cbd5e1;
   --text3:    #cbd5e1;
   --green:    #10d9a0;
   --green2:   rgba(16,217,160,0.12);
@@ -49,7 +49,7 @@ body.light{
   --border:   rgba(0,0,0,0.10);
   --border2:  rgba(0,0,0,0.18);
   --text:     #1a2740;
-  --text2:    #cbd5e1;
+  --text2:    #5a7090;
   --text3:    #7a90aa;
   --green:    #0b9e74;
   --green2:   rgba(11,158,116,0.12);
@@ -1020,7 +1020,7 @@ async function loadData(){
 // STATE LAYER
 // ═══════════════════════════════════════════════════
 // ★ VERSÃO DO SITE — fonte única; exibida no topo de todas as telas e na sidebar
-const APP_VERSAO = '10/06/2026 - 20:55';
+const APP_VERSAO = '14/06/2026 - 13:29';
 
 const STATE = {
   mode: 'comp',   // 'comp' | 'cx'
@@ -1699,7 +1699,7 @@ function renderOverview(){
   setText('kpi-distluc',fmtBR(Math.abs(DIST_RAW)));
   const isDark=!document.body.classList.contains('light');
   const gC=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tC=isDark?'#cbd5e1':'#cbd5e1';
+  const tC=isDark?'#cbd5e1':'#4a6080';
   const lblC=isDark?'#e2e8f0':'#1a2740';
   const anoAtual=new Date().getFullYear();
   const recA=byTY['Receita']||{},despA=byTY['Despesa']||{};
@@ -1881,7 +1881,7 @@ function renderCashflow(){
   initCashflowPeriods();
   const isDark=!document.body.classList.contains('light');
   const gC2=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tC2=isDark?'#cbd5e1':'#cbd5e1';
+  const tC2=isDark?'#cbd5e1':'#4a6080';
 
   // Coletar todos os meses pagos com tipos válidos
   const moSet=new Set();
@@ -2148,7 +2148,7 @@ function renderScore(){
   const fnScore=getFiltroFn('score');
   const isDark=!document.body.classList.contains('light');
   const gCS=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tCS=isDark?'#cbd5e1':'#cbd5e1';
+  const tCS=isDark?'#cbd5e1':'#4a6080';
   const now=new Date();
   const anoAtualSc=now.getFullYear(), mesAtualSc=now.getMonth()+1;
 
@@ -3147,7 +3147,7 @@ function renderAnalise(){
 
   const isDark=!document.body.classList.contains('light');
   const gCA=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tCA=isDark?'#cbd5e1':'#cbd5e1';
+  const tCA=isDark?'#cbd5e1':'#4a6080';
 
   // Gráfico anual — destacar anos ativos
   const recColors=ANOS12.map(y=>_anYrs.size===0||_anYrs.has(y)?mkRGBA(GREEN,'0.78'):mkRGBA(GREEN,'0.25'));
@@ -3317,7 +3317,7 @@ function renderCompraVenda(){
 
   const isDark=!document.body.classList.contains('light');
   const gCV=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tCV=isDark?'#cbd5e1':'#cbd5e1';
+  const tCV=isDark?'#cbd5e1':'#4a6080';
 
   if(!_cvAnoSel) _cvAnoSel=String(new Date().getFullYear());
 
@@ -3339,7 +3339,7 @@ function renderCompraVenda(){
 function renderCompraVendaMensal(){
   const isDark=!document.body.classList.contains('light');
   const gCV=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tCV=isDark?'#cbd5e1':'#cbd5e1';
+  const tCV=isDark?'#cbd5e1':'#4a6080';
   const Fcv=FILTROS.compravenda;
   const fnCV=getFiltroFn('compravenda');
   const now=new Date();
@@ -3613,7 +3613,7 @@ function renderROE(){
 
   const isDark=!document.body.classList.contains('light');
   const gCR=isDark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.07)';
-  const tCR=isDark?'#cbd5e1':'#cbd5e1';
+  const tCR=isDark?'#cbd5e1':'#4a6080';
 
   const grid=document.getElementById('roe-grid');
   if(!grid) return;

@@ -1,302 +1,468 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="moderno">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0e1116">
-<title>DashLog v2</title>
+<meta name="theme-color" content="#0d1016">
+<title>DashLog</title>
 <style>
-  /* ════════ TOKENS DE TEMA ════════
-     Dois temas com identidades próprias.
-     [data-theme="exec"]  -> Executivo (relatório claro)
-     [data-theme="moderno"] -> Moderno (bento escuro)            */
-  :root{
-    --maxw:1100px;
-    --mono:'SFMono-Regular',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
-  }
-  /* ---- MODERNO (escuro/bento) ---- */
-  [data-theme="moderno"]{
-    --bg:#0e1116; --surface:#171b22; --surface2:#1d222b; --line:#262c36;
-    --ink:#eef1f5; --muted:#8b95a3; --soft:#aeb7c4;
-    --green:#28c98a; --red:#f5604d; --accent:#7c5cff; --accent2:#22d3ee;
-    --radius:18px; --display:'Segoe UI',system-ui,-apple-system,sans-serif;
-    --body:'Segoe UI',system-ui,-apple-system,sans-serif;
-  }
-  /* ---- EXECUTIVO (claro/relatório) ---- */
-  [data-theme="exec"]{
-    --bg:#f7f6f3; --surface:#ffffff; --surface2:#f0efe9; --line:#e7e5e0;
-    --ink:#1a1d21; --muted:#6b7280; --soft:#4b5563;
-    --green:#0f7a5a; --red:#c0392b; --accent:#0e6e66; --accent2:#0e6e66;
-    --radius:8px; --display:Georgia,'Times New Roman',serif;
-    --body:system-ui,-apple-system,'Segoe UI',sans-serif;
-  }
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.5;
-    -webkit-font-smoothing:antialiased;transition:background .2s,color .2s;}
+:root{ --mono:'SFMono-Regular',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace; }
+html[data-theme="moderno"]{
+  --bg:#0d1016; --grad:radial-gradient(140% 120% at 12% -10%,#161d2b 0%,#0d1016 46%);
+  --surface:#161b24; --surface2:#1b212c; --line:#272f3c; --line2:#333d4d;
+  --ink:#f1f4f8; --muted:#8b95a4; --soft:#b7c0cd;
+  --green:#2dd4a0; --red:#f56b5a; --amber:#f6b73c;
+  --accent:#8b6dff; --accent2:#34d6ee;
+  --radius:20px; --pad:22px;
+  --display:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --body:'Segoe UI',system-ui,-apple-system,sans-serif; --shadow:none;
+}
+html[data-theme="exec"]{
+  --bg:#f6f5f1; --grad:none;
+  --surface:#ffffff; --surface2:#f1efe9; --line:#e6e3db; --line2:#d8d4ca;
+  --ink:#1b1e23; --muted:#717784; --soft:#4a5160;
+  --green:#0f7a5a; --red:#bd3b2c; --amber:#b6791b;
+  --accent:#0e6e66; --accent2:#0e6e66;
+  --radius:10px; --pad:26px;
+  --display:Georgia,'Times New Roman',serif;
+  --body:system-ui,-apple-system,'Segoe UI',sans-serif;
+  --shadow:0 1px 2px rgba(20,22,28,.04),0 8px 30px rgba(20,22,28,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);background-image:var(--grad);background-attachment:fixed;
+  color:var(--ink);font-family:var(--body);line-height:1.5;-webkit-font-smoothing:antialiased;
+  transition:background-color .25s,color .25s;}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
 
-  /* ════════ LOGIN ════════ */
-  #login{position:fixed;inset:0;background:#0e1116;color:#eef1f5;
-    display:flex;align-items:center;justify-content:center;z-index:100;
-    font-family:system-ui,sans-serif;}
-  #login .box{width:320px;max-width:90vw;text-align:center;}
-  #login h1{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
-  #login h1 b{color:#7c5cff;}
-  #login .v{font-size:12px;color:#8b95a3;margin-bottom:26px;}
-  #login input{width:100%;padding:12px 14px;margin:7px 0;border-radius:10px;
-    border:1px solid #262c36;background:#171b22;color:#eef1f5;font-size:15px;}
-  #login button{width:100%;padding:12px;margin-top:12px;border:0;border-radius:10px;
-    background:#7c5cff;color:#fff;font-weight:700;font-size:15px;cursor:pointer;}
-  #login .err{color:#f5604d;font-size:13px;min-height:18px;margin-top:10px;}
+#login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(140% 120% at 50% -20%,#1a2233 0%,#0b0e13 60%);color:#f1f4f8;
+  font-family:'Segoe UI',system-ui,sans-serif;padding:24px;}
+.lg-card{width:360px;max-width:100%;}
+.lg-logo{display:flex;align-items:center;gap:13px;margin-bottom:30px;}
+.lg-logo svg{width:46px;height:46px;}
+.lg-logo .nm{font-size:24px;font-weight:800;letter-spacing:-.02em;}
+.lg-logo .nm b{color:#8b6dff;}
+.lg-logo .tg{font-size:11.5px;color:#8b95a4;margin-top:1px;letter-spacing:.02em;}
+.lg-card h2{font-size:15px;font-weight:600;color:#cdd4de;margin-bottom:4px;}
+.lg-card p.sub{font-size:13px;color:#737d8c;margin-bottom:22px;}
+.fld{position:relative;margin-bottom:13px;}
+.fld label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8b95a4;margin-bottom:7px;}
+.fld input{width:100%;padding:13px 15px;border-radius:12px;border:1px solid #2a3342;
+  background:#141a23;color:#f1f4f8;font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s;}
+.fld input:focus{border-color:#8b6dff;box-shadow:0 0 0 3px rgba(139,109,255,.18);}
+.lg-btn{width:100%;padding:14px;margin-top:8px;border:0;border-radius:12px;cursor:pointer;
+  background:linear-gradient(180deg,#9277ff,#7c5cff);color:#fff;font-weight:700;font-size:15px;
+  transition:transform .08s,filter .15s;}
+.lg-btn:hover{filter:brightness(1.06);} .lg-btn:active{transform:translateY(1px);}
+.lg-err{color:#f56b5a;font-size:13px;min-height:18px;margin-top:12px;text-align:center;}
+.lg-foot{margin-top:26px;text-align:center;font-size:11px;color:#5a6473;}
 
-  /* ════════ LOADER ════════ */
-  #loader{position:fixed;inset:0;background:var(--bg);z-index:90;
-    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
-  .spin{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--accent);
-    border-radius:50%;animation:sp 0.8s linear infinite;}
-  @keyframes sp{to{transform:rotate(360deg);}}
-  #dl-msg{font-family:system-ui,sans-serif;color:var(--muted);font-size:13px;text-align:center;}
-  .dl-error{color:var(--red);max-width:360px;line-height:1.5;}
+#loader{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:16px;background:var(--bg);background-image:var(--grad);}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+#dl-msg{font-size:13px;color:var(--muted);text-align:center;font-family:system-ui,sans-serif;}
+.dl-error{color:var(--red);max-width:380px;line-height:1.6;}
 
-  /* ════════ APP SHELL ════════ */
-  #app{display:none;}
-  .topbar{display:flex;justify-content:space-between;align-items:center;gap:16px;
-    padding:16px 24px;border-bottom:1px solid var(--line);flex-wrap:wrap;}
-  .brand{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em;}
-  .brand b{color:var(--accent);}
-  .topbar-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
-  /* seletor de tema */
-  .theme-switch{display:flex;gap:4px;background:var(--surface2);border:1px solid var(--line);
-    border-radius:24px;padding:4px;}
-  .theme-switch button{border:0;background:transparent;color:var(--muted);cursor:pointer;
-    font-size:13px;font-weight:600;padding:7px 16px;border-radius:20px;font-family:var(--body);}
-  .theme-switch button.on{background:var(--accent);color:#fff;}
-  [data-theme="exec"] .theme-switch button.on{color:#fff;}
-  .logout{font-size:13px;color:var(--muted);cursor:pointer;background:none;border:0;font-family:var(--body);}
+#app{display:none;}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:22px;
+  padding:14px 26px;background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:saturate(140%) blur(12px);border-bottom:1px solid var(--line);}
+.tb-brand{display:flex;align-items:center;gap:11px;flex:none;}
+.tb-brand svg{width:30px;height:30px;}
+.tb-brand .nm{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.02em;}
+.tb-brand .nm b{color:var(--accent);}
+.tb-nav{display:flex;gap:3px;overflow-x:auto;flex:1;scrollbar-width:none;}
+.tb-nav::-webkit-scrollbar{display:none;}
+.tb-nav a{flex:none;font-size:13.5px;color:var(--muted);text-decoration:none;padding:8px 13px;
+  border-radius:9px;white-space:nowrap;cursor:pointer;transition:color .15s,background .15s;font-family:var(--body);}
+.tb-nav a:hover{color:var(--ink);}
+.tb-nav a.on{color:var(--ink);background:var(--surface2);font-weight:600;}
+html[data-theme="exec"] .tb-nav a.on{background:transparent;border-bottom:2px solid var(--accent);border-radius:0;}
+.tb-right{display:flex;align-items:center;gap:12px;flex:none;}
+.tsw{display:flex;gap:3px;background:var(--surface2);border:1px solid var(--line);border-radius:22px;padding:3px;}
+.tsw button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:12.5px;
+  font-weight:600;padding:6px 14px;border-radius:18px;font-family:var(--body);transition:all .15s;}
+.tsw button.on{background:var(--accent);color:#fff;}
+.tb-user{font-size:12.5px;color:var(--muted);cursor:pointer;background:none;border:0;font-family:var(--body);}
+.tb-user:hover{color:var(--ink);}
 
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:24px;}
-  .diag{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
-    padding:22px;margin-bottom:16px;}
-  .diag h2{font-family:var(--display);font-size:18px;margin-bottom:14px;letter-spacing:-.01em;}
-  .diag .row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);
-    font-size:14px;}
-  .diag .row:last-child{border-bottom:0;}
-  .diag .row .k{color:var(--muted);}
-  .diag .row .val{font-family:var(--mono);font-weight:600;}
-  .ok{color:var(--green);} .bad{color:var(--red);}
-  .note{font-size:13px;color:var(--muted);margin-top:8px;line-height:1.6;}
-  .pill-info{display:inline-block;font-size:11px;font-family:var(--mono);
-    background:var(--surface2);border:1px solid var(--line);border-radius:20px;
-    padding:3px 10px;margin:3px 4px 0 0;color:var(--soft);}
+.wrap{max-width:1120px;margin:0 auto;padding:26px;}
+.eyebrow{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);
+  font-family:var(--body);font-weight:600;}
+.muted{color:var(--muted);} .pos{color:var(--green);} .neg{color:var(--red);}
+
+html[data-theme="moderno"] .bento{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;}
+html[data-theme="moderno"] .tile{background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--radius);padding:var(--pad);position:relative;overflow:hidden;}
+html[data-theme="moderno"] .tile .t-lbl{font-size:12px;color:var(--muted);letter-spacing:.03em;}
+html[data-theme="moderno"] .tile .t-num{font-weight:800;letter-spacing:-.02em;margin-top:7px;line-height:1;}
+html[data-theme="moderno"] .hero{grid-column:span 2;grid-row:span 2;display:flex;flex-direction:column;
+  justify-content:space-between;gap:18px;
+  background:radial-gradient(130% 130% at 0% 0%,rgba(139,109,255,.20),transparent 52%),var(--surface);}
+html[data-theme="moderno"] .hero .t-num{font-size:clamp(40px,7vw,58px);color:var(--green);}
+html[data-theme="moderno"] .hero .t-sub{font-size:13px;color:var(--soft);margin-top:10px;}
+html[data-theme="moderno"] .kpi .t-num{font-size:25px;}
+html[data-theme="moderno"] .span2{grid-column:span 2;}
+html[data-theme="moderno"] .tile h3{font-size:13px;color:var(--ink);font-weight:700;margin-bottom:14px;letter-spacing:.01em;}
+.chip-period{display:flex;gap:7px;margin:0 0 18px;flex-wrap:wrap;}
+.chip-period button{font-size:12px;font-family:var(--mono);padding:6px 13px;border-radius:20px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--line);color:var(--muted);transition:all .15s;}
+.chip-period button.on{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent);color:var(--accent);}
+html[data-theme="exec"] .chip-period button.on{color:#fff;background:var(--accent);}
+
+.rk{display:flex;flex-direction:column;}
+.rk-row{display:grid;grid-template-columns:18px 110px 1fr auto;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid var(--line);}
+.rk-row:last-child{border-bottom:0;}
+.rk-row .pp{font-size:12px;color:var(--muted);font-family:var(--mono);}
+.rk-row .nn{font-weight:600;font-size:13.5px;}
+.rk-bar{height:8px;background:var(--surface2);border-radius:6px;overflow:hidden;}
+.rk-bar i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent2),var(--accent));}
+html[data-theme="exec"] .rk-bar i{background:var(--accent);}
+.rk-val{font-weight:700;font-size:13px;text-align:right;font-family:var(--mono);}
+
+html[data-theme="exec"] .ex-hero{padding:18px 0 30px;border-bottom:1px solid var(--line);}
+html[data-theme="exec"] .ex-hero h1{font-family:var(--display);font-weight:400;
+  font-size:clamp(28px,4.4vw,40px);line-height:1.16;letter-spacing:-.01em;max-width:680px;margin-top:16px;}
+html[data-theme="exec"] .ex-result{display:flex;align-items:baseline;gap:26px;margin-top:30px;flex-wrap:wrap;}
+html[data-theme="exec"] .ex-result .big{font-family:var(--body);font-size:clamp(44px,8vw,62px);
+  font-weight:800;letter-spacing:-.03em;color:var(--green);line-height:1;}
+html[data-theme="exec"] .ex-result .mt .l{font-size:11.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);}
+html[data-theme="exec"] .ex-result .mt .v{font-size:19px;font-weight:700;margin-top:4px;}
+html[data-theme="exec"] .ex-stats{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);}
+html[data-theme="exec"] .ex-stat{padding:26px 24px 26px 0;border-right:1px solid var(--line);}
+html[data-theme="exec"] .ex-stat:last-child{border-right:0;padding-left:24px;}
+html[data-theme="exec"] .ex-stat:nth-child(2){padding-left:24px;}
+html[data-theme="exec"] .ex-stat .l{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);}
+html[data-theme="exec"] .ex-stat .v{font-family:var(--body);font-size:28px;font-weight:700;margin-top:9px;letter-spacing:-.02em;}
+html[data-theme="exec"] .ex-sec{padding:36px 0;}
+html[data-theme="exec"] .ex-sec .sh{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;}
+html[data-theme="exec"] .ex-grid2{display:grid;grid-template-columns:1fr 1fr;gap:48px;}
+html[data-theme="exec"] .card-soft{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+
+.chart-box{width:100%;}
+.chart-box svg{display:block;width:100%;height:auto;overflow:visible;}
+.x-lab{font-size:9px;fill:var(--muted);font-family:var(--mono);}
+.placeholder{padding:50px 24px;text-align:center;color:var(--muted);font-size:14px;
+  background:var(--surface);border:1px dashed var(--line2);border-radius:var(--radius);}
+
+@media(max-width:820px){
+  html[data-theme="moderno"] .bento{grid-template-columns:1fr 1fr;}
+  html[data-theme="moderno"] .hero{grid-column:span 2;grid-row:auto;}
+  html[data-theme="moderno"] .span2{grid-column:span 2;}
+  html[data-theme="exec"] .ex-stats{grid-template-columns:1fr;}
+  html[data-theme="exec"] .ex-stat,html[data-theme="exec"] .ex-stat:last-child{border-right:0;border-bottom:1px solid var(--line);padding:18px 0;}
+  html[data-theme="exec"] .ex-grid2{grid-template-columns:1fr;gap:30px;}
+  .rk-row{grid-template-columns:16px 92px 1fr auto;}
+}
+@media(max-width:480px){
+  html[data-theme="moderno"] .bento{grid-template-columns:1fr;}
+  html[data-theme="moderno"] .hero,html[data-theme="moderno"] .span2{grid-column:span 1;}
+  .wrap{padding:18px;} .topbar{padding:12px 16px;gap:12px;}
+}
 </style>
 </head>
 <body>
 
-<!-- ════════ LOGIN ════════ -->
 <div id="login">
-  <div class="box">
-    <h1>Dash<b>Log</b></h1>
-    <div class="v" id="login-v">v2 · fundação</div>
-    <input type="text" id="li-user" placeholder="Usuário" autocomplete="username">
-    <input type="password" id="li-pass" placeholder="Senha" autocomplete="current-password">
-    <button onclick="tentarLogin()">Entrar</button>
-    <div class="err" id="li-err"></div>
+  <div class="lg-card">
+    <div class="lg-logo">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="DashLog">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a2233"/><stop offset="1" stop-color="#0b0e13"/></linearGradient></defs>
+        <rect width="64" height="64" rx="15" fill="url(#lg)"/>
+        <rect x="0.5" y="0.5" width="63" height="63" rx="14.5" fill="none" stroke="rgba(139,109,255,.4)"/>
+        <path d="M18 14 L18 50 L32 50 A18 18 0 0 0 32 14 Z" fill="#8b6dff"/>
+        <path d="M25 42 L31 36 L37 30 L42 24" fill="none" stroke="#0b0e13" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="25" cy="42" r="2.2" fill="#0b0e13"/><circle cx="31" cy="36" r="2.2" fill="#0b0e13"/>
+        <circle cx="37" cy="30" r="2.2" fill="#0b0e13"/><circle cx="42" cy="24" r="2.2" fill="#0b0e13"/>
+      </svg>
+      <div><div class="nm">Dash<b>Log</b></div><div class="tg">Gestão de Frota · Financeiro</div></div>
+    </div>
+    <h2>Bem-vindo de volta</h2>
+    <p class="sub">Entre para acessar o painel da frota.</p>
+    <div class="fld"><label>Usuário</label><input type="text" id="li-user" autocomplete="username" placeholder="seu usuário"></div>
+    <div class="fld"><label>Senha</label><input type="password" id="li-pass" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="lg-btn" onclick="tentarLogin()">Entrar</button>
+    <div class="lg-err" id="li-err"></div>
+    <div class="lg-foot" id="lg-foot">DashLog</div>
   </div>
 </div>
 
-<!-- ════════ LOADER ════════ -->
-<div id="loader" style="display:none">
-  <div class="spin"></div>
-  <div id="dl-msg">Carregando dados…</div>
-</div>
+<div id="loader"><div class="spin"></div><div id="dl-msg">Carregando dados…</div></div>
 
-<!-- ════════ APP ════════ -->
 <div id="app">
   <div class="topbar">
-    <div class="brand">Dash<b>Log</b></div>
-    <div class="topbar-right">
-      <div class="theme-switch">
+    <div class="tb-brand">
+      <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-label="DashLog">
+        <path d="M18 14 L18 50 L32 50 A18 18 0 0 0 32 14 Z" fill="var(--accent)"/>
+        <path d="M25 42 L31 36 L37 30 L42 24" fill="none" stroke="var(--bg)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="nm">Dash<b>Log</b></div>
+    </div>
+    <nav class="tb-nav" id="tb-nav"></nav>
+    <div class="tb-right">
+      <div class="tsw">
         <button id="bt-exec" onclick="setTheme('exec')">Executivo</button>
         <button id="bt-mod" onclick="setTheme('moderno')">Moderno</button>
       </div>
-      <button class="logout" onclick="logout()">Sair</button>
+      <button class="tb-user" onclick="logout()" id="tb-user">Sair</button>
     </div>
   </div>
-
-  <div class="wrap">
-    <div class="diag">
-      <h2>Fundação carregada ✓</h2>
-      <div class="row"><span class="k">Versão</span><span class="val" id="d-ver">—</span></div>
-      <div class="row"><span class="k">Tema atual</span><span class="val" id="d-theme">—</span></div>
-      <div class="row"><span class="k">Usuário logado</span><span class="val" id="d-user">—</span></div>
-      <div class="row"><span class="k">dados.json (CP1252)</span><span class="val" id="d-dados">—</span></div>
-      <div class="row"><span class="k">Lançamentos (R)</span><span class="val" id="d-r">—</span></div>
-      <div class="row"><span class="k">Centros de custo</span><span class="val" id="d-cc">—</span></div>
-      <div class="row"><span class="k">patrimonio.json (UTF-8)</span><span class="val" id="d-patr">—</span></div>
-      <div class="row"><span class="k">Veículos (patrimônio)</span><span class="val" id="d-veic">—</span></div>
-      <div class="row"><span class="k">Patrimônio total</span><span class="val" id="d-pat-tot">—</span></div>
-      <div class="note">Esta é a tela de diagnóstico da fundação. Confirma que login, os dois JSONs, o motor de cálculo e a troca de tema funcionam. As telas reais (Visão Geral, etc.) vêm nos próximos passos.</div>
-    </div>
-
-    <div class="diag">
-      <h2>Escopo do v2</h2>
-      <div class="note"><b>Tema Executivo (6 telas):</b><br>
-        <span class="pill-info">Visão Geral</span><span class="pill-info">Fluxo de Caixa</span><span class="pill-info">Resultado Financeiro</span><span class="pill-info">Rentabilidades</span><span class="pill-info">DRE Consolidada</span><span class="pill-info">Patrimônio</span>
-      </div>
-      <div class="note" style="margin-top:14px"><b>Tema Moderno (13 telas):</b><br>
-        <span class="pill-info">Visão Geral</span><span class="pill-info">Resultado Financeiro</span><span class="pill-info">Fluxo de Caixa</span><span class="pill-info">Compras x Vendas</span><span class="pill-info">Score &amp; Alertas</span><span class="pill-info">Rentabilidades</span><span class="pill-info">DRE por Placa</span><span class="pill-info">DRE Consolidada</span><span class="pill-info">ROE</span><span class="pill-info">Ranking</span><span class="pill-info">Pendências</span><span class="pill-info">Controle</span><span class="pill-info">Fichas</span>
-      </div>
-    </div>
-  </div>
+  <div class="wrap" id="screen"></div>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════
-//  DASHLOG v2 — FUNDAÇÃO
-// ═══════════════════════════════════════════════════
-const APP_VERSAO = '21/06/2026 - 15:39 (v2-fundação)';
-
-// índices das colunas de R (iguais ao site atual)
+const APP_VERSAO='21/06/2026 - 15:51 (v2)';
 const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7,I_DESC=8,I_FORN=9;
-const ANOS12 = ['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
-const EXCL_CC   = new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
-const EXCL_RENT = new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR','CARRETAS']);
+const ANOS=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
+const EXCL_CC=new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
 
-// dados globais
-let _payload=null, _usuarios=[], _D=null;
-let CC=[],CAT=[],TIPO=[],MO=[],DRV=[],R=[],DESC=[],FORN=[];
-let OP_CCS=[], OP_CCS_SET=new Set();
-let PATR=null; // patrimonio.json
+let _payload=null,_usuarios=[],_D=null,PATR=null;
+let CC=[],CAT=[],TIPO=[],MO=[],R=[],DESC=[],FORN=[];
+let OP_CCS=[],OP_CCS_SET=new Set();
+let SCREEN='visao';
 
-// ───────── UTIL ─────────
-function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+const TELAS_EXEC=[['visao','Visão Geral'],['caixa','Fluxo de Caixa'],['resultado','Resultado Financeiro'],['rent','Rentabilidades'],['drec','DRE Consolidada'],['patr','Patrimônio']];
+const TELAS_MOD=[['visao','Visão Geral'],['resultado','Resultado Financeiro'],['caixa','Fluxo de Caixa'],['compravenda','Compras x Vendas'],['score','Score & Alertas'],['rent','Rentabilidades'],['dre','DRE por Placa'],['drec','DRE Consolidada'],['roe','ROE'],['ranking','Ranking'],['pend','Pendências'],['controle','Controle'],['fichas','Fichas']];
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function fmtBR(v,dec=2){if(v==null||isNaN(v))return '—';return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec});}
-function fmtK(v){if(v==null||isNaN(v))return '—';const a=Math.abs(v);if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' mi';if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' mil';return fmtBR(v);}
-function fmtPct(v){return isNaN(v)||!isFinite(v)?'—':v.toFixed(2).replace('.',',')+'%';}
-function setTxt(id,t){const e=document.getElementById(id);if(e)e.textContent=t;}
+function fmtMi(v){if(v==null||isNaN(v))return '—';const a=Math.abs(v);
+  if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})+' mi';
+  if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0})+' mil';
+  return fmtBR(v,0);}
+function fmtPct(v){return isNaN(v)||!isFinite(v)?'—':v.toFixed(1).replace('.',',')+'%';}
 
-// ───────── LOGIN ─────────
 async function sha256(t){const b=new TextEncoder().encode(t.toUpperCase());const h=await crypto.subtle.digest('SHA-256',b);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,'0')).join('');}
 async function tentarLogin(){
   const u=document.getElementById('li-user').value.trim();
   const p=document.getElementById('li-pass').value;
   const err=document.getElementById('li-err');
   if(!u||!p){err.textContent='Preencha usuário e senha.';return;}
-  // a fundação ainda não tem os usuários até carregar o JSON — então
-  // carregamos os dados primeiro, depois validamos.
-  err.textContent='Verificando…';
+  err.textContent='';
   document.getElementById('login').style.display='none';
   document.getElementById('loader').style.display='flex';
-  const ok=await loadData();
-  if(!ok){return;} // erro já exibido no loader
+  const ok=await loadData(); if(!ok)return;
   await loadPatrimonio();
-  // validar credencial
   const pHash=await sha256(p);
-  const match=(_usuarios||[]).find(x=>String(x.u||x.usuario||x.user||x[0]||'').toUpperCase()===u.toUpperCase() && String(x.p||x.senha||x.hash||x[1]||'').toLowerCase()===pHash.toLowerCase());
-  if(!match){
-    // volta ao login
-    document.getElementById('loader').style.display='none';
-    document.getElementById('login').style.display='flex';
-    err.textContent='Usuário ou senha inválidos.';
-    return;
-  }
-  sessionStorage.setItem('dashlog_auth','1');
-  sessionStorage.setItem('dashlog_user',u);
-  iniciarApp();
+  const m=(_usuarios||[]).find(x=>String(x.u||x.usuario||x[0]||'').toUpperCase()===u.toUpperCase()&&String(x.p||x.senha||x[1]||'').toLowerCase()===pHash.toLowerCase());
+  if(!m){document.getElementById('loader').style.display='none';document.getElementById('login').style.display='flex';err.textContent='Usuário ou senha inválidos.';return;}
+  sessionStorage.setItem('dashlog_auth','1');sessionStorage.setItem('dashlog_user',u);
+  iniciar();
 }
 function logout(){sessionStorage.removeItem('dashlog_auth');sessionStorage.removeItem('dashlog_user');location.reload();}
 
-// ───────── CARREGAR dados.json (CP1252) ─────────
 async function loadData(){
-  const msgEl=document.getElementById('dl-msg');
+  const msg=document.getElementById('dl-msg');
   try{
-    const resp=await fetch('./dados.json?v='+Date.now(),{cache:'no-cache'});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    const buf=await resp.arrayBuffer();
-    const txt=new TextDecoder('windows-1252').decode(buf);
-    const payload=JSON.parse(txt);
-    _payload=payload; _usuarios=payload.login||[];
-    _D=payload.d||payload;
-    CC=_D.CC; CAT=_D.CAT; TIPO=_D.TIPO; MO=_D.MO; DRV=_D.DRV||[]; R=_D.R;
-    DESC=_D.DESC||[]; FORN=_D.FORN||[];
-    OP_CCS=CC.filter(c=>!EXCL_CC.has(c)); OP_CCS_SET=new Set(OP_CCS);
+    const r=await fetch('./dados.json?v='+Date.now(),{cache:'no-cache'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const txt=new TextDecoder('windows-1252').decode(await r.arrayBuffer());
+    _payload=JSON.parse(txt);_usuarios=_payload.login||[];_D=_payload.d||_payload;
+    CC=_D.CC;CAT=_D.CAT;TIPO=_D.TIPO;MO=_D.MO;R=_D.R;DESC=_D.DESC||[];FORN=_D.FORN||[];
+    OP_CCS=CC.filter(c=>!EXCL_CC.has(c));OP_CCS_SET=new Set(OP_CCS);
     return true;
-  }catch(err){
-    if(msgEl)msgEl.innerHTML='<div class="dl-error">Não consegui carregar <b>dados.json</b>.<br>Verifique se está na mesma pasta do HTML.<br><small style="opacity:.7">'+esc(err.message)+'</small></div>';
-    return false;
-  }
+  }catch(e){if(msg)msg.innerHTML='<div class="dl-error">Não consegui carregar <b>dados.json</b>.<br>Verifique se está na mesma pasta do HTML.<br><small style="opacity:.7">'+esc(e.message)+'</small></div>';return false;}
 }
-// ───────── CARREGAR patrimonio.json (UTF-8) ─────────
-async function loadPatrimonio(){
-  try{
-    const resp=await fetch('./patrimonio.json?v='+Date.now(),{cache:'no-cache'});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    PATR=await resp.json();
-    return true;
-  }catch(err){
-    console.warn('patrimonio.json não carregou:',err);
-    PATR=null; return false;
-  }
-}
+async function loadPatrimonio(){try{const r=await fetch('./patrimonio.json?v='+Date.now(),{cache:'no-cache'});if(!r.ok)throw 0;PATR=await r.json();return true;}catch(e){PATR=null;return false;}}
 
-// ───────── PATRIMÔNIO: resumo por sócio ─────────
+function kpisGerais(){
+  let rec=0,desp=0; const porAno={},mes2026=new Array(12).fill(0),porPlaca={};
+  for(let i=0;i<R.length;i++){
+    const row=R[i],tipo=TIPO[row[I_TIPO]],val=row[I_VAL],mo=MO[row[I_DC]]||'',cc=CC[row[I_CC]];
+    const y=mo.slice(0,4);
+    if(tipo==='Receita')rec+=val; else if(tipo==='Despesa')desp+=Math.abs(val);
+    if(y){(porAno[y]||(porAno[y]=[0,0]));if(tipo==='Receita')porAno[y][0]+=val;else if(tipo==='Despesa')porAno[y][1]+=Math.abs(val);}
+    if(!EXCL_CC.has(cc)){porPlaca[cc]=(porPlaca[cc]||0)+val; if(y==='2026'){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12)mes2026[m]+=val;}}
+  }
+  const res=rec-desp;
+  const rank=Object.entries(porPlaca).sort((a,b)=>b[1]-a[1]);
+  const anos=ANOS.map(y=>({ano:y,res:porAno[y]?porAno[y][0]-porAno[y][1]:0}));
+  return {rec,desp,res,margem:rec?res/rec*100:0,rank,mes2026,anos};
+}
 function patrimonioResumo(){
   if(!PATR||!PATR.sociedade)return null;
-  const soc=PATR.sociedade;
-  const total=soc.reduce((s,v)=>s+(v.vlr_mercado||0),0);
-  const porSocio={};
+  const soc=PATR.sociedade,total=soc.reduce((s,v)=>s+(v.vlr_mercado||0),0),porSocio={};
   soc.forEach(v=>(v.socios||[]).forEach(s=>{porSocio[s.nome]=(porSocio[s.nome]||0)+(s.valor||0);}));
-  return {total, veiculos:soc.length, porSocio};
+  return {total,veiculos:soc.length,porSocio:Object.entries(porSocio).sort((a,b)=>b[1]-a[1])};
 }
 
-// ───────── TEMA ─────────
+function barChart(vals,labels,opts={}){
+  const w=opts.w||520,h=opts.h||130,pad=opts.pad||16;
+  const max=Math.max(1,...vals.map(v=>Math.abs(v)));
+  const n=vals.length,bw=(w-pad*2)/n,iw=bw*0.68;
+  const zeroY=h/2,scale=(h/2-10)/max;
+  let bars='',labs='';
+  vals.forEach((v,i)=>{
+    const x=pad+i*bw+(bw-iw)/2,bh=Math.abs(v)*scale,y=v>=0?zeroY-bh:zeroY;
+    const col=v>=0?'var(--green)':'var(--red)';
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${iw.toFixed(1)}" height="${Math.max(1,bh).toFixed(1)}" rx="2.5" fill="${col}"/>`;
+    if(labels&&labels[i])labs+=`<text class="x-lab" x="${(x+iw/2).toFixed(1)}" y="${h-2}" text-anchor="middle">${labels[i]}</text>`;
+  });
+  return `<div class="chart-box"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">
+    <line x1="${pad}" y1="${zeroY}" x2="${w-pad}" y2="${zeroY}" stroke="var(--line2)" stroke-width="1"/>${bars}${labs}</svg></div>`;
+}
+function donut(pct){
+  const s=118,cx=s/2,cy=s/2,r=s/2-9,C=2*Math.PI*r;
+  const fill=Math.max(0,Math.min(100,pct)),off=C*(1-fill/100);
+  return `<svg viewBox="0 0 ${s} ${s}" width="${s}" height="${s}" role="img">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="11"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--green)" stroke-width="11" stroke-linecap="round"
+      stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy+1}" text-anchor="middle" dominant-baseline="middle"
+      style="font-weight:800;font-size:21px;fill:var(--ink);font-family:var(--body)">${fmtPct(pct)}</text></svg>`;
+}
+
 function setTheme(t){
   document.documentElement.setAttribute('data-theme',t);
   localStorage.setItem('dashlog_theme',t);
   document.getElementById('bt-exec').classList.toggle('on',t==='exec');
   document.getElementById('bt-mod').classList.toggle('on',t==='moderno');
-  setTxt('d-theme', t==='exec'?'Executivo':'Moderno');
-  document.querySelector('meta[name=theme-color]').setAttribute('content', t==='exec'?'#f7f6f3':'#0e1116');
+  document.querySelector('meta[name=theme-color]').setAttribute('content',t==='exec'?'#f6f5f1':'#0d1016');
+  const telas=(t==='exec'?TELAS_EXEC:TELAS_MOD).map(x=>x[0]);
+  if(!telas.includes(SCREEN))SCREEN='visao';
+  renderNav();renderScreen();
+}
+function renderNav(){
+  const t=document.documentElement.getAttribute('data-theme');
+  const telas=t==='exec'?TELAS_EXEC:TELAS_MOD;
+  document.getElementById('tb-nav').innerHTML=telas.map(([id,nm])=>`<a class="${id===SCREEN?'on':''}" onclick="go('${id}')">${nm}</a>`).join('');
+}
+function go(id){SCREEN=id;renderNav();renderScreen();window.scrollTo({top:0,behavior:'smooth'});}
+
+function renderScreen(){
+  const t=document.documentElement.getAttribute('data-theme');
+  if(SCREEN==='visao')return (t==='exec'?visaoExec:visaoModerno)();
+  if(SCREEN==='patr')return patrimonioTela();
+  document.getElementById('screen').innerHTML=
+    `<div class="eyebrow">${t==='exec'?'Relatório':'Painel'}</div>
+     <div class="placeholder" style="margin-top:18px">A tela <b>${esc(nomeTela(SCREEN))}</b> entra nos próximos passos.<br>
+     <span style="font-size:13px">A fundação e a Visão Geral já estão prontas nos dois temas.</span></div>`;
+}
+function nomeTela(id){const f=TELAS_MOD.find(x=>x[0]===id);return f?f[1]:id;}
+
+function visaoModerno(){
+  const k=kpisGerais();
+  const mesLab=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const margemPos=Math.max(0,k.margem);
+  const top=k.rank.slice(0,6),maxR=Math.max(...top.map(x=>Math.abs(x[1])));
+  document.getElementById('screen').innerHTML=`
+    <div class="chip-period"><button class="on">Todos</button><button>2026</button><button>2025</button><button>Últ. 12m</button></div>
+    <div class="bento">
+      <div class="tile hero">
+        <div><div class="t-lbl">Resultado consolidado · acumulado</div>
+          <div class="t-num">${fmtMi(k.res)}</div>
+          <div class="t-sub">Margem líquida ${fmtPct(k.margem)} · ${k.rank.length} placas operacionais</div></div>
+        <div><div class="t-lbl" style="margin-bottom:10px">Resultado 2026 · mês a mês</div>${barChart(k.mes2026,mesLab,{w:480,h:120})}</div>
+      </div>
+      <div class="tile kpi"><div class="t-lbl">Receita total</div><div class="t-num pos">${fmtMi(k.rec)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Despesa total</div><div class="t-num neg">${fmtMi(k.desp)}</div></div>
+      <div class="tile span2" style="display:flex;align-items:center;gap:24px">
+        <div style="flex:none">${donut(k.margem)}</div>
+        <div><h3 style="margin-bottom:10px">Margem líquida</h3>
+          <div style="font-size:13px;color:var(--soft);line-height:1.8">
+            <div><span style="color:var(--green)">●</span> Resultado ${fmtPct(margemPos)}</div>
+            <div><span style="color:var(--red)">●</span> Despesa ${fmtPct(100-margemPos)}</div></div></div>
+      </div>
+      <div class="tile span2"><h3>Ranking de veículos</h3>
+        <div class="rk">${top.map(([cc,v],i)=>`<div class="rk-row"><span class="pp">${i+1}</span><span class="nn">${esc(cc)}</span>
+          <span class="rk-bar"><i style="width:${Math.max(4,Math.abs(v)/maxR*100).toFixed(0)}%"></i></span>
+          <span class="rk-val ${v<0?'neg':'pos'}">${fmtBR(v,0)}</span></div>`).join('')}</div>
+      </div>
+      <div class="tile span2"><h3>Resultado por ano</h3>${barChart(k.anos.map(a=>a.res),k.anos.map(a=>a.ano.slice(2)),{w:520,h:130})}</div>
+    </div>`;
 }
 
-// ───────── INICIAR APP ─────────
-function iniciarApp(){
+function visaoExec(){
+  const k=kpisGerais();
+  const top=k.rank.slice(0,6),maxR=Math.max(...top.map(x=>Math.abs(x[1])));
+  document.getElementById('screen').innerHTML=`
+    <div class="ex-hero">
+      <div class="eyebrow">Resultado consolidado · acumulado total</div>
+      <h1>A frota acumula resultado de ${fmtMi(k.res)} no período.</h1>
+      <div class="ex-result">
+        <div class="big">${fmtMi(k.res)}</div>
+        <div class="mt"><div class="l">Margem líquida</div><div class="v">${fmtPct(k.margem)}</div></div>
+        <div class="mt"><div class="l">Veículos operacionais</div><div class="v">${k.rank.length} placas</div></div>
+      </div>
+    </div>
+    <div class="ex-stats">
+      <div class="ex-stat"><div class="l">Receita total</div><div class="v">${fmtBR(k.rec,0)}</div></div>
+      <div class="ex-stat"><div class="l">Despesa total</div><div class="v" style="color:var(--red)">${fmtBR(k.desp,0)}</div></div>
+      <div class="ex-stat"><div class="l">Resultado</div><div class="v">${fmtBR(k.res,0)}</div></div>
+    </div>
+    <div class="ex-sec"><div class="ex-grid2">
+      <div><div class="sh">Ranking de veículos · resultado</div>
+        <div class="rk">${top.map(([cc,v],i)=>`<div class="rk-row"><span class="pp">${String(i+1).padStart(2,'0')}</span><span class="nn">${esc(cc)}</span>
+          <span class="rk-bar"><i style="width:${Math.max(4,Math.abs(v)/maxR*100).toFixed(0)}%"></i></span>
+          <span class="rk-val">${fmtBR(v,0)}</span></div>`).join('')}</div>
+      </div>
+      <div><div class="sh">Resultado 2026 · mês a mês</div>
+        <div class="card-soft">${barChart(k.mes2026,['J','F','M','A','M','J','J','A','S','O','N','D'],{w:460,h:150})}</div>
+        <div class="sh" style="margin:30px 0 22px">Resultado por ano</div>
+        <div class="card-soft">${barChart(k.anos.map(a=>a.res),k.anos.map(a=>a.ano.slice(2)),{w:460,h:140})}</div>
+      </div>
+    </div></div>`;
+}
+
+function patrimonioTela(){
+  const t=document.documentElement.getAttribute('data-theme');
+  const pr=patrimonioResumo();
+  const el=document.getElementById('screen');
+  if(!pr){el.innerHTML='<div class="placeholder">patrimonio.json não carregou.</div>';return;}
+  const maxS=Math.max(...pr.porSocio.map(x=>x[1]));
+  const dirR=(PATR.sociedade.find(v=>v.diretriz_rogerio)||{}).diretriz_rogerio;
+  const benef=dirR?dirR.beneficiarios:[];
+  const rog=(pr.porSocio.find(x=>x[0]==='Rogerio')||[null,0])[1];
+  const list=pr.porSocio.map(([nome,v])=>`<div class="rk-row"><span class="pp"></span><span class="nn">${esc(nome)}</span>
+      <span class="rk-bar"><i style="width:${(v/maxS*100).toFixed(0)}%"></i></span>
+      <span class="rk-val">${fmtBR(v,0)} · ${fmtPct(v/pr.total*100)}</span></div>`).join('');
+  const sucessao=benef.map(b=>`<div class="rk-row"><span class="pp"></span><span class="nn">${esc(b.nome)}</span>
+      <span class="rk-bar"><i style="width:${(b.percentual).toFixed(0)}%"></i></span>
+      <span class="rk-val">${fmtBR(rog*b.percentual/100,0)} · ${b.percentual.toFixed(1).replace('.',',')}%</span></div>`).join('');
+  if(t==='exec'){
+    el.innerHTML=`
+      <div class="ex-hero">
+        <div class="eyebrow">Patrimônio · valor de mercado de referência</div>
+        <h1>A frota soma um patrimônio de ${fmtMi(pr.total)}, distribuído entre ${pr.porSocio.length} sócios.</h1>
+        <div class="ex-result"><div class="big">${fmtMi(pr.total)}</div>
+          <div class="mt"><div class="l">Veículos</div><div class="v">${pr.veiculos}</div></div></div>
+      </div>
+      <div class="ex-sec"><div class="ex-grid2">
+        <div><div class="sh">Divisão por sócio</div><div class="rk">${list}</div></div>
+        <div><div class="sh">Sucessão · parte de Rogerio (${fmtBR(rog,0)})</div><div class="rk">${sucessao}</div>
+          <p class="muted" style="font-size:12.5px;margin-top:18px;line-height:1.6">Demais sócios: repasse conforme a ordem legal de sucessão de cada um (cônjuge, filhos, etc.).</p></div>
+      </div></div>`;
+  }else{
+    el.innerHTML=`
+      <div class="bento">
+        <div class="tile hero"><div><div class="t-lbl">Patrimônio total · valor de mercado</div>
+          <div class="t-num" style="color:var(--accent2)">${fmtMi(pr.total)}</div>
+          <div class="t-sub">${pr.veiculos} veículos · ${pr.porSocio.length} sócios</div></div></div>
+        <div class="tile span2"><h3>Divisão por sócio</h3><div class="rk">${list}</div></div>
+        <div class="tile" style="grid-column:span 4"><h3>Sucessão · parte de Rogerio (${fmtBR(rog,0)})</h3><div class="rk">${sucessao}</div>
+          <p class="muted" style="font-size:12.5px;margin-top:14px">Demais sócios: repasse conforme a ordem legal de sucessão (cônjuge, filhos, etc.).</p></div>
+      </div>`;
+  }
+}
+
+function iniciar(){
   document.getElementById('login').style.display='none';
   document.getElementById('loader').style.display='none';
   document.getElementById('app').style.display='block';
-  const tema=localStorage.getItem('dashlog_theme')||'moderno';
-  setTheme(tema);
-  renderDiagnostico();
+  document.getElementById('tb-user').textContent=(sessionStorage.getItem('dashlog_user')||'Sair');
+  setTheme(localStorage.getItem('dashlog_theme')||'moderno');
 }
-
-function renderDiagnostico(){
-  setTxt('d-ver',APP_VERSAO);
-  setTxt('d-user',(sessionStorage.getItem('dashlog_user')||'—').toUpperCase());
-  setTxt('d-dados', _D?'OK':'falhou');
-  document.getElementById('d-dados').className='val '+(_D?'ok':'bad');
-  setTxt('d-r', R?R.length.toLocaleString('pt-BR')+' linhas':'—');
-  setTxt('d-cc', CC?CC.length+' ('+OP_CCS.length+' operacionais)':'—');
-  setTxt('d-patr', PATR?'OK':'não carregou');
-  document.getElementById('d-patr').className='val '+(PATR?'ok':'bad');
-  const pr=patrimonioResumo();
-  if(pr){
-    setTxt('d-veic', pr.veiculos+' veículos');
-    setTxt('d-pat-tot', fmtBR(pr.total));
-  }else{
-    setTxt('d-veic','—'); setTxt('d-pat-tot','—');
-  }
-}
-
-// ───────── BOOT ─────────
 (function(){
-  document.getElementById('login-v').textContent='v2 · fundação · '+APP_VERSAO;
-  // auto-login se já autenticado nesta sessão
+  document.getElementById('lg-foot').textContent='DashLog · '+APP_VERSAO;
+  document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')tentarLogin();});
   if(sessionStorage.getItem('dashlog_auth')==='1'){
     document.getElementById('login').style.display='none';
     document.getElementById('loader').style.display='flex';
-    loadData().then(ok=>{ if(ok) return loadPatrimonio().then(iniciarApp); });
+    loadData().then(ok=>{if(ok)loadPatrimonio().then(iniciar);});
   }
-  // Enter no campo de senha faz login
-  document.getElementById('li-pass').addEventListener('keydown',e=>{if(e.key==='Enter')tentarLogin();});
 })();
 </script>
 </body>

@@ -214,10 +214,11 @@ html[data-theme="exec"] .card-soft{background:var(--surface);border:1px solid va
 </div>
 
 <script>
-const APP_VERSAO='22/06/2026 - 07:33 (v2)';
+const APP_VERSAO='22/06/2026 - 08:48 (v2)';
 const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7,I_DESC=8,I_FORN=9;
 const ANOS=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
 const EXCL_CC=new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
+const EXCL_RENT=new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR','CARRETAS']);
 
 let _payload=null,_usuarios=[],_D=null,PATR=null;
 let CC=[],CAT=[],TIPO=[],MO=[],R=[],DESC=[],FORN=[];
@@ -336,6 +337,21 @@ function cashflow(){
   let acc=0; const acumulado=anosSaldo.map(v=>acc+=v);
   return {ent,sai,cmp,vnd,saldoPeriodo:ent-sai+vnd-cmp,mEnt,mSai,anosSaldo,acumulado,selYear:sy};
 }
+function rentabilidade(){
+  const sy=selYear();
+  let tot=0; const yr={},mSel=new Array(12).fill(0),porPlaca={};
+  for(let i=0;i<R.length;i++){
+    const row=R[i],cc=CC[row[I_CC]]; if(EXCL_RENT.has(cc))continue;
+    const val=row[I_VAL],mo=MO[row[I_DC]]||'',y=mo.slice(0,4); if(!y)continue;
+    yr[y]=(yr[y]||0)+val;
+    if(fnMes(mo)){tot+=val;porPlaca[cc]=(porPlaca[cc]||0)+val;}
+    if(y===sy){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12)mSel[m]+=val;}
+  }
+  const anos=ANOS.map(y=>({ano:y,val:yr[y]||0}));
+  const rank=Object.entries(porPlaca).sort((a,b)=>b[1]-a[1]);
+  const best=anos.reduce((b,a)=>a.val>b.val?a:b,{ano:'',val:-Infinity});
+  return {tot,anos,mSel,rank,best,selYear:sy};
+}
 function finance(){
   const sy=selYear();
   let rec=0,desp=0,jur=0;
@@ -449,6 +465,7 @@ function renderScreen(){
   if(SCREEN==='visao')return (t==='exec'?visaoExec:visaoModerno)();
   if(SCREEN==='resultado')return (t==='exec'?resultadoExec:resultadoModerno)();
   if(SCREEN==='caixa')return (t==='exec'?caixaExec:caixaModerno)();
+  if(SCREEN==='rent')return (t==='exec'?rentExec:rentModerno)();
   if(SCREEN==='patr')return patrimonioTela();
   document.getElementById('screen').innerHTML=
     `<div class="eyebrow">${t==='exec'?'Relatório':'Painel'}</div>
@@ -626,6 +643,62 @@ function caixaExec(){
       </div>
       <div><div class="sh">Saldo acumulado · ano a ano</div>
         <div class="card-soft">${lineChart(c.acumulado,ANOS.map(a=>a.slice(2)),{w:460,h:170})}</div>
+      </div>
+    </div></div>`;
+}
+
+// ── Rentabilidades ──
+function rentModerno(){
+  const r=rentabilidade();
+  const mesLab=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const top=r.rank.slice(0,8),maxR=Math.max(...top.map(x=>Math.abs(x[1])),1);
+  document.getElementById('screen').innerHTML=`
+    <div class="chip-period">${chipsHTML()}</div>
+    <div class="bento">
+      <div class="tile span2">
+        <div class="t-lbl">Rentabilidade · ${PERIODO==='todos'?'acumulada':esc(PERIODO==='u12'?'últ. 12 meses':PERIODO)}</div>
+        <div class="t-num" style="font-size:clamp(36px,6vw,52px);color:${r.tot>=0?'var(--green)':'var(--red)'}">${fmtMi(r.tot)}</div>
+        <div class="t-sub" style="margin-top:8px">Operacional · exclui carretas e não operacionais</div>
+      </div>
+      <div class="tile kpi"><div class="t-lbl">Melhor ano</div><div class="t-num">${r.best.ano}</div>
+        <div class="t-lbl" style="margin-top:6px">${fmtMi(r.best.val)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Placas operacionais</div><div class="t-num">${r.rank.length}</div></div>
+      <div class="tile span2"><h3>Rentabilidade por placa</h3>
+        <div class="rk">${top.map(([cc,v],i)=>`<div class="rk-row"><span class="pp">${i+1}</span><span class="nn">${esc(cc)}</span>
+          <span class="rk-bar"><i style="width:${Math.max(4,Math.abs(v)/maxR*100).toFixed(0)}%"></i></span>
+          <span class="rk-val ${v<0?'neg':'pos'}">${fmtBR(v,0)}</span></div>`).join('')}</div>
+      </div>
+      <div class="tile span2"><h3>Rentabilidade ${r.selYear} · mês a mês</h3>${barChart(r.mSel,mesLab,{w:480,h:150})}</div>
+      <div class="tile" style="grid-column:span 4"><h3>Rentabilidade · ano a ano</h3>
+        ${barChart(r.anos.map(a=>a.val),r.anos.map(a=>a.ano.slice(2)),{w:560,h:150})}</div>
+    </div>`;
+}
+function rentExec(){
+  const r=rentabilidade();
+  const top=r.rank.slice(0,8),maxR=Math.max(...top.map(x=>Math.abs(x[1])),1);
+  document.getElementById('screen').innerHTML=`
+    <div class="ex-hero">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">Rentabilidade operacional · ${PERIODO==='todos'?'acumulada total':esc(PERIODO==='u12'?'últimos 12 meses':PERIODO)}</div>
+        <div class="chip-period" style="margin:0">${chipsHTML()}</div>
+      </div>
+      <h1>A rentabilidade operacional do período é de ${fmtMi(r.tot)}.</h1>
+      <div class="ex-result">
+        <div class="big" style="color:${r.tot>=0?'var(--green)':'var(--red)'}">${fmtMi(r.tot)}</div>
+        <div class="mt"><div class="l">Melhor ano</div><div class="v">${r.best.ano} · ${fmtMi(r.best.val)}</div></div>
+        <div class="mt"><div class="l">Placas</div><div class="v">${r.rank.length}</div></div>
+      </div>
+    </div>
+    <div class="ex-sec"><div class="ex-grid2">
+      <div><div class="sh">Rentabilidade por placa</div>
+        <div class="rk">${top.map(([cc,v],i)=>`<div class="rk-row"><span class="pp">${String(i+1).padStart(2,'0')}</span><span class="nn">${esc(cc)}</span>
+          <span class="rk-bar"><i style="width:${Math.max(4,Math.abs(v)/maxR*100).toFixed(0)}%"></i></span>
+          <span class="rk-val">${fmtBR(v,0)}</span></div>`).join('')}</div>
+      </div>
+      <div><div class="sh">Rentabilidade ${r.selYear} · mês a mês</div>
+        <div class="card-soft">${barChart(r.mSel,['J','F','M','A','M','J','J','A','S','O','N','D'],{w:460,h:150})}</div>
+        <div class="sh" style="margin:30px 0 22px">Rentabilidade · ano a ano</div>
+        <div class="card-soft">${barChart(r.anos.map(a=>a.val),r.anos.map(a=>a.ano.slice(2)),{w:460,h:140})}</div>
       </div>
     </div></div>`;
 }

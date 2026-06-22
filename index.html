@@ -214,7 +214,7 @@ html[data-theme="exec"] .card-soft{background:var(--surface);border:1px solid va
 </div>
 
 <script>
-const APP_VERSAO='21/06/2026 - 15:51 (v2)';
+const APP_VERSAO='22/06/2026 - 07:33 (v2)';
 const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7,I_DESC=8,I_FORN=9;
 const ANOS=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
 const EXCL_CC=new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
@@ -223,6 +223,29 @@ let _payload=null,_usuarios=[],_D=null,PATR=null;
 let CC=[],CAT=[],TIPO=[],MO=[],R=[],DESC=[],FORN=[];
 let OP_CCS=[],OP_CCS_SET=new Set();
 let SCREEN='visao';
+let PERIODO='todos'; // 'todos' | 'AAAA' | 'u12'
+let _maxMo=null;
+
+function maxMo(){
+  if(_maxMo)return _maxMo;
+  let mx='';
+  for(let i=0;i<R.length;i++){const mo=MO[R[i][I_DC]]||'';if(mo>mx)mx=mo;}
+  _maxMo=mx||'2026-12'; return _maxMo;
+}
+function fnMes(mo){
+  if(!mo)return false;
+  if(PERIODO==='todos')return true;
+  if(PERIODO==='u12'){
+    const mx=maxMo(); const [my,mm]=mx.split('-').map(Number);
+    const lim=new Date(my,mm-12,1); const [y,m]=mo.split('-').map(Number);
+    const d=new Date(y,m-1,1); return d>lim && d<=new Date(my,mm-1,1);
+  }
+  return mo.slice(0,4)===PERIODO; // ano específico
+}
+function selYear(){return /^\d{4}$/.test(PERIODO)?PERIODO:'2026';}
+const PERIODOS=[['todos','Todos'],['2026','2026'],['2025','2025'],['2024','2024'],['u12','Últ. 12m']];
+function chipsHTML(){return PERIODOS.map(([id,nm])=>`<button class="${id===PERIODO?'on':''}" onclick="setPeriodo('${id}')">${nm}</button>`).join('');}
+function setPeriodo(p){PERIODO=p;renderScreen();}
 
 const TELAS_EXEC=[['visao','Visão Geral'],['caixa','Fluxo de Caixa'],['resultado','Resultado Financeiro'],['rent','Rentabilidades'],['drec','DRE Consolidada'],['patr','Patrimônio']];
 const TELAS_MOD=[['visao','Visão Geral'],['resultado','Resultado Financeiro'],['caixa','Fluxo de Caixa'],['compravenda','Compras x Vendas'],['score','Score & Alertas'],['rent','Rentabilidades'],['dre','DRE por Placa'],['drec','DRE Consolidada'],['roe','ROE'],['ranking','Ranking'],['pend','Pendências'],['controle','Controle'],['fichas','Fichas']];
@@ -269,18 +292,67 @@ async function loadData(){
 async function loadPatrimonio(){try{const r=await fetch('./patrimonio.json?v='+Date.now(),{cache:'no-cache'});if(!r.ok)throw 0;PATR=await r.json();return true;}catch(e){PATR=null;return false;}}
 
 function kpisGerais(){
-  let rec=0,desp=0; const porAno={},mes2026=new Array(12).fill(0),porPlaca={};
+  const sy=selYear();
+  let rec=0,desp=0; const porAno={},mesSel=new Array(12).fill(0),porPlaca={};
   for(let i=0;i<R.length;i++){
     const row=R[i],tipo=TIPO[row[I_TIPO]],val=row[I_VAL],mo=MO[row[I_DC]]||'',cc=CC[row[I_CC]];
     const y=mo.slice(0,4);
-    if(tipo==='Receita')rec+=val; else if(tipo==='Despesa')desp+=Math.abs(val);
     if(y){(porAno[y]||(porAno[y]=[0,0]));if(tipo==='Receita')porAno[y][0]+=val;else if(tipo==='Despesa')porAno[y][1]+=Math.abs(val);}
-    if(!EXCL_CC.has(cc)){porPlaca[cc]=(porPlaca[cc]||0)+val; if(y==='2026'){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12)mes2026[m]+=val;}}
+    if(fnMes(mo)){
+      if(tipo==='Receita')rec+=val; else if(tipo==='Despesa')desp+=Math.abs(val);
+      if(!EXCL_CC.has(cc))porPlaca[cc]=(porPlaca[cc]||0)+val;
+    }
+    if(y===sy && !EXCL_CC.has(cc)){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12)mesSel[m]+=val;}
   }
   const res=rec-desp;
   const rank=Object.entries(porPlaca).sort((a,b)=>b[1]-a[1]);
   const anos=ANOS.map(y=>({ano:y,res:porAno[y]?porAno[y][0]-porAno[y][1]:0}));
-  return {rec,desp,res,margem:rec?res/rec*100:0,rank,mes2026,anos};
+  return {rec,desp,res,margem:rec?res/rec*100:0,rank,mes2026:mesSel,mesSel,selYear:sy,anos};
+}
+const CF_TIPOS_OK=new Set(['Descarga','Despesa','Distribuição Lucro','Juros','Receita','Verificar']);
+function cashflow(){
+  const sy=selYear();
+  let ent=0,sai=0,cmp=0,vnd=0;
+  const yrSaldo={}, mEnt=new Array(12).fill(0),mSai=new Array(12).fill(0);
+  for(let i=0;i<R.length;i++){
+    const row=R[i],tipo=TIPO[row[I_TIPO]],val=row[I_VAL];
+    if(CF_TIPOS_OK.has(tipo)&&row[I_DP]!==-1){
+      const mo=MO[row[I_DP]]||''; if(mo>='2015-01'){
+        const y=mo.slice(0,4),e=val>0?val:0,s=val<0?Math.abs(val):0;
+        yrSaldo[y]=(yrSaldo[y]||0)+(e-s);
+        if(fnMes(mo)){ent+=e;sai+=s;}
+        if(y===sy){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12){mEnt[m]+=e;mSai[m]+=s;}}
+      }
+    }
+    if(tipo==='Compra de Veículo'||tipo==='Venda De Veículo'){
+      const mo=MO[row[I_DC]]||''; if(mo>='2015-01'){
+        const y=mo.slice(0,4),isV=tipo==='Venda De Veículo',amt=Math.abs(val);
+        yrSaldo[y]=(yrSaldo[y]||0)+(isV?amt:-amt);
+        if(fnMes(mo)){if(isV)vnd+=amt;else cmp+=amt;}
+      }
+    }
+  }
+  const anosSaldo=ANOS.map(y=>yrSaldo[y]||0);
+  let acc=0; const acumulado=anosSaldo.map(v=>acc+=v);
+  return {ent,sai,cmp,vnd,saldoPeriodo:ent-sai+vnd-cmp,mEnt,mSai,anosSaldo,acumulado,selYear:sy};
+}
+function finance(){
+  const sy=selYear();
+  let rec=0,desp=0,jur=0;
+  const yr={}, mr=new Array(12).fill(0),md=new Array(12).fill(0),mj=new Array(12).fill(0);
+  for(let i=0;i<R.length;i++){
+    const row=R[i],tipo=TIPO[row[I_TIPO]],val=row[I_VAL],mo=MO[row[I_DC]]||'',y=mo.slice(0,4);
+    if(y){if(!yr[y])yr[y]={rec:0,desp:0,jur:0};
+      if(tipo==='Receita')yr[y].rec+=val;else if(tipo==='Despesa')yr[y].desp+=Math.abs(val);else if(tipo==='Juros')yr[y].jur+=val;}
+    if(fnMes(mo)){
+      if(tipo==='Receita')rec+=val;else if(tipo==='Despesa')desp+=Math.abs(val);else if(tipo==='Juros')jur+=val;
+    }
+    if(y===sy){const m=parseInt(mo.slice(5,7))-1;if(m>=0&&m<12){
+      if(tipo==='Receita')mr[m]+=val;else if(tipo==='Despesa')md[m]+=Math.abs(val);else if(tipo==='Juros')mj[m]+=val;}}
+  }
+  const luc=rec-desp+jur;
+  const anos=ANOS.map(y=>({ano:y,...(yr[y]||{rec:0,desp:0,jur:0})}));
+  return {rec,desp,jur,luc,margem:rec?luc/rec*100:0,anos,mr,md,mj,selYear:sy};
 }
 function patrimonioResumo(){
   if(!PATR||!PATR.sociedade)return null;
@@ -303,6 +375,46 @@ function barChart(vals,labels,opts={}){
   });
   return `<div class="chart-box"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">
     <line x1="${pad}" y1="${zeroY}" x2="${w-pad}" y2="${zeroY}" stroke="var(--line2)" stroke-width="1"/>${bars}${labs}</svg></div>`;
+}
+function groupedBar(series,labels,opts={}){
+  // series: [{vals, color}], desenha barras lado a lado por grupo
+  const w=opts.w||520,h=opts.h||150,pad=opts.pad||16;
+  const n=labels.length,gw=(w-pad*2)/n;
+  let allMax=1; series.forEach(s=>s.vals.forEach(v=>{if(Math.abs(v)>allMax)allMax=Math.abs(v);}));
+  const base=h-18,scale=(h-26)/allMax;
+  const m=series.length,iw=gw*0.7/m;
+  let bars='',labs='';
+  labels.forEach((lab,i)=>{
+    series.forEach((s,j)=>{
+      const v=s.vals[i]||0,bh=Math.max(1,Math.abs(v)*scale);
+      const x=pad+i*gw+gw*0.15+j*iw;
+      bars+=`<rect x="${x.toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(iw*0.86).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="${s.color}"/>`;
+    });
+    labs+=`<text class="x-lab" x="${(pad+i*gw+gw/2).toFixed(1)}" y="${h-3}" text-anchor="middle">${lab}</text>`;
+  });
+  return `<div class="chart-box"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">
+    <line x1="${pad}" y1="${base}" x2="${w-pad}" y2="${base}" stroke="var(--line2)" stroke-width="1"/>${bars}${labs}</svg></div>`;
+}
+function legend(items){return '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--soft)">'+
+  items.map(([c,t])=>`<span><span style="color:${c}">●</span> ${t}</span>`).join('')+'</div>';}
+function lineChart(vals,labels,opts={}){
+  const w=opts.w||540,h=opts.h||150,pad=opts.pad||18;
+  const max=Math.max(...vals,0),min=Math.min(...vals,0),range=(max-min)||1;
+  const x=i=>pad+i*((w-pad*2)/(vals.length-1||1));
+  const y=v=>h-16-((v-min)/range)*(h-26);
+  const zeroY=y(0);
+  let path='',area='';
+  vals.forEach((v,i)=>{path+=(i?'L':'M')+x(i).toFixed(1)+' '+y(v).toFixed(1)+' ';});
+  area=`M${x(0).toFixed(1)} ${zeroY.toFixed(1)} `+vals.map((v,i)=>'L'+x(i).toFixed(1)+' '+y(v).toFixed(1)).join(' ')+` L${x(vals.length-1).toFixed(1)} ${zeroY.toFixed(1)} Z`;
+  let dots='',labs='';
+  vals.forEach((v,i)=>{dots+=`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="var(--accent2)"/>`;
+    if(labels&&labels[i])labs+=`<text class="x-lab" x="${x(i).toFixed(1)}" y="${h-2}" text-anchor="middle">${labels[i]}</text>`;});
+  return `<div class="chart-box"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img">
+    <defs><linearGradient id="lcg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity="0.30"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <line x1="${pad}" y1="${zeroY.toFixed(1)}" x2="${w-pad}" y2="${zeroY.toFixed(1)}" stroke="var(--line2)" stroke-width="1"/>
+    <path d="${area}" fill="url(#lcg)"/>
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${labs}</svg></div>`;
 }
 function donut(pct){
   const s=118,cx=s/2,cy=s/2,r=s/2-9,C=2*Math.PI*r;
@@ -335,6 +447,8 @@ function go(id){SCREEN=id;renderNav();renderScreen();window.scrollTo({top:0,beha
 function renderScreen(){
   const t=document.documentElement.getAttribute('data-theme');
   if(SCREEN==='visao')return (t==='exec'?visaoExec:visaoModerno)();
+  if(SCREEN==='resultado')return (t==='exec'?resultadoExec:resultadoModerno)();
+  if(SCREEN==='caixa')return (t==='exec'?caixaExec:caixaModerno)();
   if(SCREEN==='patr')return patrimonioTela();
   document.getElementById('screen').innerHTML=
     `<div class="eyebrow">${t==='exec'?'Relatório':'Painel'}</div>
@@ -349,13 +463,13 @@ function visaoModerno(){
   const margemPos=Math.max(0,k.margem);
   const top=k.rank.slice(0,6),maxR=Math.max(...top.map(x=>Math.abs(x[1])));
   document.getElementById('screen').innerHTML=`
-    <div class="chip-period"><button class="on">Todos</button><button>2026</button><button>2025</button><button>Últ. 12m</button></div>
+    <div class="chip-period">${chipsHTML()}</div>
     <div class="bento">
       <div class="tile hero">
-        <div><div class="t-lbl">Resultado consolidado · acumulado</div>
+        <div><div class="t-lbl">Resultado consolidado · ${PERIODO==='todos'?'acumulado':esc(PERIODO==='u12'?'últ. 12 meses':PERIODO)}</div>
           <div class="t-num">${fmtMi(k.res)}</div>
           <div class="t-sub">Margem líquida ${fmtPct(k.margem)} · ${k.rank.length} placas operacionais</div></div>
-        <div><div class="t-lbl" style="margin-bottom:10px">Resultado 2026 · mês a mês</div>${barChart(k.mes2026,mesLab,{w:480,h:120})}</div>
+        <div><div class="t-lbl" style="margin-bottom:10px">Resultado ${k.selYear} · mês a mês</div>${barChart(k.mesSel,mesLab,{w:480,h:120})}</div>
       </div>
       <div class="tile kpi"><div class="t-lbl">Receita total</div><div class="t-num pos">${fmtMi(k.rec)}</div></div>
       <div class="tile kpi"><div class="t-lbl">Despesa total</div><div class="t-num neg">${fmtMi(k.desp)}</div></div>
@@ -380,7 +494,10 @@ function visaoExec(){
   const top=k.rank.slice(0,6),maxR=Math.max(...top.map(x=>Math.abs(x[1])));
   document.getElementById('screen').innerHTML=`
     <div class="ex-hero">
-      <div class="eyebrow">Resultado consolidado · acumulado total</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">Resultado consolidado · ${PERIODO==='todos'?'acumulado total':esc(PERIODO==='u12'?'últimos 12 meses':PERIODO)}</div>
+        <div class="chip-period" style="margin:0">${chipsHTML()}</div>
+      </div>
       <h1>A frota acumula resultado de ${fmtMi(k.res)} no período.</h1>
       <div class="ex-result">
         <div class="big">${fmtMi(k.res)}</div>
@@ -399,10 +516,116 @@ function visaoExec(){
           <span class="rk-bar"><i style="width:${Math.max(4,Math.abs(v)/maxR*100).toFixed(0)}%"></i></span>
           <span class="rk-val">${fmtBR(v,0)}</span></div>`).join('')}</div>
       </div>
-      <div><div class="sh">Resultado 2026 · mês a mês</div>
-        <div class="card-soft">${barChart(k.mes2026,['J','F','M','A','M','J','J','A','S','O','N','D'],{w:460,h:150})}</div>
+      <div><div class="sh">Resultado ${k.selYear} · mês a mês</div>
+        <div class="card-soft">${barChart(k.mesSel,['J','F','M','A','M','J','J','A','S','O','N','D'],{w:460,h:150})}</div>
         <div class="sh" style="margin:30px 0 22px">Resultado por ano</div>
         <div class="card-soft">${barChart(k.anos.map(a=>a.res),k.anos.map(a=>a.ano.slice(2)),{w:460,h:140})}</div>
+      </div>
+    </div></div>`;
+}
+
+function resultadoModerno(){
+  const f=finance();
+  const mesLab=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  const lucMes=f.mr.map((r,i)=>r-f.md[i]+f.mj[i]);
+  document.getElementById('screen').innerHTML=`
+    <div class="chip-period">${chipsHTML()}</div>
+    <div class="bento">
+      <div class="tile hero">
+        <div><div class="t-lbl">Lucro financeiro · ${PERIODO==='todos'?'acumulado':esc(PERIODO==='u12'?'últ. 12 meses':PERIODO)}</div>
+          <div class="t-num" style="color:${f.luc>=0?'var(--green)':'var(--red)'}">${fmtMi(f.luc)}</div>
+          <div class="t-sub">Margem líquida ${fmtPct(f.margem)} · inclui juros</div></div>
+        <div><div class="t-lbl" style="margin-bottom:10px">Resultado financeiro ${f.selYear} · mês a mês</div>${barChart(lucMes,mesLab,{w:480,h:120})}</div>
+      </div>
+      <div class="tile kpi"><div class="t-lbl">Receitas</div><div class="t-num pos">${fmtMi(f.rec)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Despesas</div><div class="t-num neg">${fmtMi(f.desp)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Juros</div><div class="t-num" style="color:var(--amber)">${fmtMi(f.jur)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Margem líquida</div><div class="t-num">${fmtPct(f.margem)}</div></div>
+      <div class="tile" style="grid-column:span 4"><h3>Receitas × Despesas · ano a ano</h3>
+        ${groupedBar([{vals:f.anos.map(a=>a.rec),color:'var(--green)'},{vals:f.anos.map(a=>a.desp),color:'var(--red)'}],f.anos.map(a=>a.ano.slice(2)),{w:560,h:160})}
+        ${legend([['var(--green)','Receitas'],['var(--red)','Despesas']])}
+      </div>
+    </div>`;
+}
+function resultadoExec(){
+  const f=finance();
+  const lucMes=f.mr.map((r,i)=>r-f.md[i]+f.mj[i]);
+  document.getElementById('screen').innerHTML=`
+    <div class="ex-hero">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">Resultado financeiro · ${PERIODO==='todos'?'acumulado total':esc(PERIODO==='u12'?'últimos 12 meses':PERIODO)}</div>
+        <div class="chip-period" style="margin:0">${chipsHTML()}</div>
+      </div>
+      <h1>O lucro financeiro do período é de ${fmtMi(f.luc)}.</h1>
+      <div class="ex-result">
+        <div class="big" style="color:${f.luc>=0?'var(--green)':'var(--red)'}">${fmtMi(f.luc)}</div>
+        <div class="mt"><div class="l">Margem líquida</div><div class="v">${fmtPct(f.margem)}</div></div>
+      </div>
+    </div>
+    <div class="ex-stats">
+      <div class="ex-stat"><div class="l">Receitas</div><div class="v">${fmtBR(f.rec,0)}</div></div>
+      <div class="ex-stat"><div class="l">Despesas</div><div class="v" style="color:var(--red)">${fmtBR(f.desp,0)}</div></div>
+      <div class="ex-stat"><div class="l">Juros</div><div class="v" style="color:var(--amber)">${fmtBR(f.jur,0)}</div></div>
+    </div>
+    <div class="ex-sec"><div class="ex-grid2">
+      <div><div class="sh">Receitas × Despesas · ano a ano</div>
+        <div class="card-soft">${groupedBar([{vals:f.anos.map(a=>a.rec),color:'var(--green)'},{vals:f.anos.map(a=>a.desp),color:'var(--red)'}],f.anos.map(a=>a.ano.slice(2)),{w:460,h:170})}${legend([['var(--green)','Receitas'],['var(--red)','Despesas']])}</div>
+      </div>
+      <div><div class="sh">Resultado financeiro ${f.selYear} · mês a mês</div>
+        <div class="card-soft">${barChart(lucMes,['J','F','M','A','M','J','J','A','S','O','N','D'],{w:460,h:170})}</div>
+      </div>
+    </div></div>`;
+}
+
+// ── Fluxo de Caixa ──
+function caixaModerno(){
+  const c=cashflow();
+  const mesLab=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  document.getElementById('screen').innerHTML=`
+    <div class="chip-period">${chipsHTML()}</div>
+    <div class="bento">
+      <div class="tile hero">
+        <div><div class="t-lbl">Saldo do período · pago · ${PERIODO==='todos'?'acumulado':esc(PERIODO==='u12'?'últ. 12 meses':PERIODO)}</div>
+          <div class="t-num" style="color:${c.saldoPeriodo>=0?'var(--green)':'var(--red)'}">${fmtMi(c.saldoPeriodo)}</div>
+          <div class="t-sub">Entradas − saídas + vendas − compras de veículos</div></div>
+        <div><div class="t-lbl" style="margin-bottom:10px">Entradas × saídas ${c.selYear} · mês a mês</div>
+          ${groupedBar([{vals:c.mEnt,color:'var(--green)'},{vals:c.mSai,color:'var(--red)'}],mesLab,{w:480,h:120})}</div>
+      </div>
+      <div class="tile kpi"><div class="t-lbl">Entradas</div><div class="t-num pos">${fmtMi(c.ent)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Saídas</div><div class="t-num neg">${fmtMi(c.sai)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Compras de veículos</div><div class="t-num neg">${fmtMi(c.cmp)}</div></div>
+      <div class="tile kpi"><div class="t-lbl">Vendas de veículos</div><div class="t-num pos">${fmtMi(c.vnd)}</div></div>
+      <div class="tile" style="grid-column:span 4"><h3>Saldo acumulado · ano a ano</h3>
+        ${lineChart(c.acumulado,ANOS.map(a=>a.slice(2)),{w:560,h:160})}</div>
+    </div>`;
+}
+function caixaExec(){
+  const c=cashflow();
+  const mesLab=['J','F','M','A','M','J','J','A','S','O','N','D'];
+  document.getElementById('screen').innerHTML=`
+    <div class="ex-hero">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">Fluxo de caixa · valores pagos · ${PERIODO==='todos'?'acumulado total':esc(PERIODO==='u12'?'últimos 12 meses':PERIODO)}</div>
+        <div class="chip-period" style="margin:0">${chipsHTML()}</div>
+      </div>
+      <h1>O saldo de caixa do período é de ${fmtMi(c.saldoPeriodo)}.</h1>
+      <div class="ex-result">
+        <div class="big" style="color:${c.saldoPeriodo>=0?'var(--green)':'var(--red)'}">${fmtMi(c.saldoPeriodo)}</div>
+        <div class="mt"><div class="l">Entradas</div><div class="v">${fmtMi(c.ent)}</div></div>
+        <div class="mt"><div class="l">Saídas</div><div class="v">${fmtMi(c.sai)}</div></div>
+      </div>
+    </div>
+    <div class="ex-stats">
+      <div class="ex-stat"><div class="l">Compras de veículos</div><div class="v" style="color:var(--red)">${fmtBR(c.cmp,0)}</div></div>
+      <div class="ex-stat"><div class="l">Vendas de veículos</div><div class="v">${fmtBR(c.vnd,0)}</div></div>
+      <div class="ex-stat"><div class="l">Saldo do período</div><div class="v">${fmtBR(c.saldoPeriodo,0)}</div></div>
+    </div>
+    <div class="ex-sec"><div class="ex-grid2">
+      <div><div class="sh">Entradas × saídas ${c.selYear} · mês a mês</div>
+        <div class="card-soft">${groupedBar([{vals:c.mEnt,color:'var(--green)'},{vals:c.mSai,color:'var(--red)'}],mesLab,{w:460,h:170})}${legend([['var(--green)','Entradas'],['var(--red)','Saídas']])}</div>
+      </div>
+      <div><div class="sh">Saldo acumulado · ano a ano</div>
+        <div class="card-soft">${lineChart(c.acumulado,ANOS.map(a=>a.slice(2)),{w:460,h:170})}</div>
       </div>
     </div></div>`;
 }

@@ -111,6 +111,10 @@ html[data-theme="moderno"] .tile h3{font-size:13px;color:var(--ink);font-weight:
   background:var(--surface2);border:1px solid var(--line);color:var(--muted);transition:all .15s;}
 .chip-period button.on{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent);color:var(--accent);}
 html[data-theme="exec"] .chip-period button.on{color:#fff;background:var(--accent);}
+.yr-sel{font-size:12px;font-family:var(--mono);padding:6px 10px;border-radius:20px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--line);color:var(--muted);outline:none;}
+.yr-sel.on{background:color-mix(in srgb,var(--accent) 18%,transparent);border-color:var(--accent);color:var(--accent);}
+html[data-theme="exec"] .yr-sel.on{color:#fff;background:var(--accent);}
 
 .rk{display:flex;flex-direction:column;}
 .rk-row{display:grid;grid-template-columns:18px 110px 1fr auto;align-items:center;gap:12px;
@@ -147,6 +151,19 @@ html[data-theme="exec"] .card-soft{background:var(--surface);border:1px solid va
 .x-lab{font-size:9px;fill:var(--muted);font-family:var(--mono);}
 .placeholder{padding:50px 24px;text-align:center;color:var(--muted);font-size:14px;
   background:var(--surface);border:1px dashed var(--line2);border-radius:var(--radius);}
+.dscroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);}
+table.dtable{border-collapse:collapse;width:100%;font-size:13px;}
+table.dtable th,table.dtable td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line);}
+table.dtable th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--surface2);}
+table.dtable th:first-child,table.dtable td:first-child{text-align:left;}
+table.dtable td.ind{padding-left:26px;color:var(--soft);}
+table.dtable tr.sub td{font-weight:700;color:var(--ink);background:color-mix(in srgb,var(--ink) 6%,transparent);}
+table.dtable td.tot,table.dtable th.tot{background:color-mix(in srgb,var(--accent) 9%,transparent);font-weight:600;}
+table.dtable tr.infosep td{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--surface2);text-align:left;}
+table.dtable tr.info td{color:var(--muted);font-style:italic;}
+.cp{color:var(--green);font-family:var(--mono);} .cn{color:var(--red);font-family:var(--mono);} .z{color:var(--muted);}
+.dbtn{font-size:12px;font-family:var(--body);font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;
+  background:var(--surface2);border:1px solid var(--line);color:var(--ink);margin-bottom:14px;}
 
 @media(max-width:820px){
   html[data-theme="moderno"] .bento{grid-template-columns:1fr 1fr;}
@@ -214,7 +231,7 @@ html[data-theme="exec"] .card-soft{background:var(--surface);border:1px solid va
 </div>
 
 <script>
-const APP_VERSAO='22/06/2026 - 08:48 (v2)';
+const APP_VERSAO='22/06/2026 - 09:10 (v2)';
 const I_CC=0,I_CAT=1,I_TIPO=2,I_DC=3,I_DP=4,I_VAL=5,I_KM=6,I_LTS=7,I_DESC=8,I_FORN=9;
 const ANOS=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'];
 const EXCL_CC=new Set(['CONSOLIDADO','DISTRIBUIÇÃO LUCRO','IMOBILIZADO','VERIFICAR']);
@@ -245,7 +262,17 @@ function fnMes(mo){
 }
 function selYear(){return /^\d{4}$/.test(PERIODO)?PERIODO:'2026';}
 const PERIODOS=[['todos','Todos'],['2026','2026'],['2025','2025'],['2024','2024'],['u12','Últ. 12m']];
-function chipsHTML(){return PERIODOS.map(([id,nm])=>`<button class="${id===PERIODO?'on':''}" onclick="setPeriodo('${id}')">${nm}</button>`).join('');}
+function chipsHTML(){
+  const chips=PERIODOS.map(([id,nm])=>`<button class="${id===PERIODO?'on':''}" onclick="setPeriodo('${id}')">${nm}</button>`).join('');
+  // seletor de qualquer ano (2015–2026)
+  const fixos=PERIODOS.map(x=>x[0]);
+  const anos=['2023','2022','2021','2020','2019','2018','2017','2016','2015'];
+  const selAtivo=anos.includes(PERIODO);
+  const opts=['<option value="">Outro ano…</option>']
+    .concat(anos.map(y=>`<option value="${y}" ${y===PERIODO?'selected':''}>${y}</option>`)).join('');
+  const sel=`<select class="yr-sel${selAtivo?' on':''}" onchange="if(this.value)setPeriodo(this.value)">${opts}</select>`;
+  return chips+sel;
+}
 function setPeriodo(p){PERIODO=p;renderScreen();}
 
 const TELAS_EXEC=[['visao','Visão Geral'],['caixa','Fluxo de Caixa'],['resultado','Resultado Financeiro'],['rent','Rentabilidades'],['drec','DRE Consolidada'],['patr','Patrimônio']];
@@ -466,6 +493,7 @@ function renderScreen(){
   if(SCREEN==='resultado')return (t==='exec'?resultadoExec:resultadoModerno)();
   if(SCREEN==='caixa')return (t==='exec'?caixaExec:caixaModerno)();
   if(SCREEN==='rent')return (t==='exec'?rentExec:rentModerno)();
+  if(SCREEN==='drec')return (t==='exec'?drecExec:drecModerno)();
   if(SCREEN==='patr')return patrimonioTela();
   document.getElementById('screen').innerHTML=
     `<div class="eyebrow">${t==='exec'?'Relatório':'Painel'}</div>
@@ -701,6 +729,94 @@ function rentExec(){
         <div class="card-soft">${barChart(r.anos.map(a=>a.val),r.anos.map(a=>a.ano.slice(2)),{w:460,h:140})}</div>
       </div>
     </div></div>`;
+}
+
+// ── DRE Consolidada ──
+const DREC_ESP=['CONSOLIDADO','VERIFICAR','IMOBILIZADO','DISTRIBUIÇÃO LUCRO'];
+const DREC_RESULT_ESP=new Set(['CONSOLIDADO','VERIFICAR']);
+let DREC_GROUPED=false;
+let _catTipo=null;
+function catTipoMap(){if(_catTipo)return _catTipo;const m={};for(let i=0;i<R.length;i++)m[CAT[R[i][I_CAT]]]=TIPO[R[i][I_TIPO]];_catTipo=m;return m;}
+function drecAgg(){
+  const agg={};
+  for(let i=0;i<R.length;i++){
+    const row=R[i],mo=MO[row[I_DC]]||''; if(!fnMes(mo))continue;
+    const cc=CC[row[I_CC]],cat=CAT[row[I_CAT]];
+    (agg[cc]||(agg[cc]={})); agg[cc][cat]=(agg[cc][cat]||0)+row[I_VAL];
+  }
+  return agg;
+}
+function drecModel(){
+  const agg=drecAgg(),ct=catTipoMap();
+  const ccTem=cc=>agg[cc]&&Object.values(agg[cc]).some(v=>Math.abs(v)>0.005);
+  const placas=OP_CCS.filter(ccTem).sort((a,b)=>a.localeCompare(b));
+  const esp=DREC_ESP.filter(ccTem);
+  const resultCCs=[...placas,...esp.filter(c=>DREC_RESULT_ESP.has(c))];
+  const v=(col,cat)=>{
+    if(col==='PLACAS')return placas.reduce((s,cc)=>s+((agg[cc]||{})[cat]||0),0);
+    if(col==='TOTAL')return resultCCs.reduce((s,cc)=>s+((agg[cc]||{})[cat]||0),0);
+    if(col==='TOTAL_INFO'){let s=0;for(const cc in agg)s+=(agg[cc][cat]||0);return s;}
+    return (agg[col]||{})[cat]||0;
+  };
+  const cats=new Set();Object.values(agg).forEach(o=>Object.keys(o).forEach(c=>cats.add(c)));
+  const has=cat=>[...placas,...esp,'TOTAL'].some(col=>Math.abs(v(col,cat))>0.005);
+  const byT=t=>[...cats].filter(c=>ct[c]===t&&has(c));
+  const rec=byT('Receita').sort((a,b)=>a==='FRETE'?-1:b==='FRETE'?1:a.localeCompare(b));
+  const desp=byT('Despesa').sort();
+  const jur=byT('Juros').sort();
+  const imob=byT('Compra de Veículo').concat(byT('Venda De Veículo')).sort();
+  const dist=byT('Distribuição Lucro').sort();
+  return {placas,esp,v,rec,desp,jur,imob,dist};
+}
+function fmtDRE(v){const a=Math.abs(v);if(a<0.005)return '<span class="z">—</span>';
+  const s=a.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return v>0?`<span class="cp">${s}</span>`:`<span class="cn">(${s})</span>`;}
+function drecMatrix(){
+  const m=drecModel();
+  const placaCols=DREC_GROUPED?['PLACAS']:m.placas;
+  const cols=[...placaCols,...m.esp,'TOTAL'];
+  const isTot=c=>c==='TOTAL';
+  const lbl=c=>c==='PLACAS'?'PLACAS':c==='TOTAL'?'TOTAL':c==='DISTRIBUIÇÃO LUCRO'?'DIST. LUCRO':c;
+  const td=(val,c)=>`<td class="${isTot(c)?'tot':''}">${fmtDRE(Math.round(val*100)/100)}</td>`;
+  const sum=(cats,c)=>cats.reduce((s,cat)=>s+m.v(c,cat),0);
+  let rows='';
+  m.rec.forEach(cat=>rows+=`<tr><td class="ind">${esc(cat)}</td>${cols.map(c=>td(m.v(c,cat),c)).join('')}</tr>`);
+  rows+=`<tr class="sub"><td>RECEITA</td>${cols.map(c=>td(sum(m.rec,c),c)).join('')}</tr>`;
+  m.desp.forEach(cat=>rows+=`<tr><td class="ind">${esc(cat)}</td>${cols.map(c=>td(m.v(c,cat),c)).join('')}</tr>`);
+  const oper=c=>sum(m.rec,c)+sum(m.desp,c);
+  rows+=`<tr class="sub"><td>RESULTADO OPERACIONAL</td>${cols.map(c=>td(oper(c),c)).join('')}</tr>`;
+  m.jur.forEach(cat=>rows+=`<tr><td class="ind">${esc(cat)}</td>${cols.map(c=>td(m.v(c,cat),c)).join('')}</tr>`);
+  const liq=c=>oper(c)+sum(m.jur,c);
+  rows+=`<tr class="sub"><td>RESULTADO LÍQUIDO</td>${cols.map(c=>td(liq(c),c)).join('')}</tr>`;
+  rows+=`<tr><td>Margem Líquida %</td>${cols.map(c=>{const rr=sum(m.rec,c);const mg=Math.abs(rr)>0.005?liq(c)/rr*100:NaN;return `<td class="${isTot(c)?'tot':''}">${fmtPct(mg)}</td>`;}).join('')}</tr>`;
+  if(m.imob.length||m.dist.length){
+    rows+=`<tr class="infosep"><td colspan="${cols.length+1}">Informativo — não afeta o resultado</td></tr>`;
+    const infoRow=cat=>`<tr class="info"><td class="ind">${esc(cat)}</td>${cols.map(c=>td(isTot(c)?m.v('TOTAL_INFO',cat):m.v(c,cat),c)).join('')}</tr>`;
+    m.imob.forEach(cat=>rows+=infoRow(cat)); m.dist.forEach(cat=>rows+=infoRow(cat));
+  }
+  const head=`<tr><th>Conta</th>${cols.map(c=>`<th class="${isTot(c)?'tot':''}">${lbl(c)}</th>`).join('')}</tr>`;
+  return `<div class="dscroll"><table class="dtable"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+}
+function toggleDrecGroup(){DREC_GROUPED=!DREC_GROUPED;renderScreen();}
+function drecModerno(){
+  document.getElementById('screen').innerHTML=`
+    <div class="chip-period">${chipsHTML()}</div>
+    <button class="dbtn" onclick="toggleDrecGroup()">${DREC_GROUPED?'▦ Expandir placas':'▤ Agrupar placas'}</button>
+    ${drecMatrix()}`;
+}
+function drecExec(){
+  document.getElementById('screen').innerHTML=`
+    <div class="ex-hero" style="padding-bottom:22px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="eyebrow">DRE Consolidada · ${PERIODO==='todos'?'acumulado total':esc(PERIODO==='u12'?'últimos 12 meses':PERIODO)}</div>
+        <div class="chip-period" style="margin:0">${chipsHTML()}</div>
+      </div>
+      <h1 style="font-size:clamp(24px,3.5vw,32px)">Demonstrativo por centro de custo.</h1>
+    </div>
+    <div class="ex-sec" style="padding-top:26px">
+      <button class="dbtn" onclick="toggleDrecGroup()">${DREC_GROUPED?'▦ Expandir placas':'▤ Agrupar placas'}</button>
+      ${drecMatrix()}
+    </div>`;
 }
 
 function patrimonioTela(){
